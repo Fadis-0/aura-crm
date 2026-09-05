@@ -59,6 +59,24 @@ export type Affiliate = {
   updated_at: string;
 };
 
+export const PLAN_KINDS = ["one_time", "subscription"] as const;
+export type PlanKind = (typeof PLAN_KINDS)[number];
+
+/** One way to buy into a project: a one-time sell or a subscription tier.
+ *  Carries its own commission, since that is what actually pays a partner. */
+export type ProjectPlan = {
+  id: ID;
+  project_id: ID;
+  name: string;
+  kind: PlanKind;
+  price: number;
+  commission_type: CommissionType;
+  commission_amount: number;
+  commission_rate: number;
+  position: number;
+  created_at: string;
+};
+
 export const LEAD_STAGES = [
   "new",
   "contacted",
@@ -92,6 +110,8 @@ export type Lead = {
   temperature: "cold" | "warm" | "hot";
   source: LeadSource;
   affiliate_id: ID | null;
+  project_id: ID | null;
+  plan_id: ID | null;
   estimated_value: number | null;
   probability: number | null;
   expected_close: string | null;
@@ -356,6 +376,7 @@ export type Invoice = {
 export type Commission = {
   id: ID;
   affiliate_id: ID;
+  plan_id: ID | null;
   lead_id: ID | null;
   client_id: ID | null;
   invoice_id: ID | null;
