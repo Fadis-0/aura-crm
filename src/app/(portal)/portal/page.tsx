@@ -11,6 +11,7 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, Progress } from "@/components/ui";
 import { compactMoney, money } from "@/lib/utils";
+import { commissionLabel } from "@/components/commission-field";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -195,8 +196,14 @@ export default async function PortalHome() {
                           {p.affiliate_brief ?? "No brief yet"}
                         </p>
                       </div>
-                      {p.affiliate_commission_rate ? (
-                        <Badge accent="sage">{p.affiliate_commission_rate}%</Badge>
+                      {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
+                        <Badge accent="sage">
+                          {commissionLabel(
+                            p.affiliate_commission_type,
+                            p.affiliate_commission_amount,
+                            p.affiliate_commission_rate,
+                          )}
+                        </Badge>
                       ) : null}
                       <span className="hidden shrink-0 text-[11.5px] text-ink-4 sm:block">
                         {mine} won
@@ -273,8 +280,14 @@ export default async function PortalHome() {
                   <p className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">
                     {p.name}
                   </p>
-                  {p.affiliate_commission_rate ? (
-                    <Badge accent="sage">{p.affiliate_commission_rate}%</Badge>
+                  {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
+                    <Badge accent="sage">
+                      {commissionLabel(
+                        p.affiliate_commission_type,
+                        p.affiliate_commission_amount,
+                        p.affiliate_commission_rate,
+                      )}
+                    </Badge>
                   ) : null}
                 </div>
                 {p.affiliate_brief ? (

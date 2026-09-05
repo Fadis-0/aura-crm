@@ -22,7 +22,7 @@ export default async function PortalLeadsPage() {
     <PortalLeads
       initialLeads={(data ?? []) as Lead[]}
       affiliateId={affiliate?.id ?? null}
-      commissionRate={affiliate?.commission_rate ?? null}
+      affiliate={affiliate}
     />
   );
 }

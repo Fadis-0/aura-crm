@@ -16,6 +16,7 @@ import {
   Select,
 } from "@/components/ui";
 import { WILAYAS, formatRip, isValidRip, normaliseRip } from "@/lib/algeria";
+import { commissionLabel } from "@/components/commission-field";
 import { ThemeToggle } from "@/components/theme";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, LOCALE, type Accent } from "@/lib/utils";
@@ -257,9 +258,15 @@ export function PortalSettings({
               </dd>
             </div>
             <div className="flex items-center justify-between gap-4 px-5 py-3">
-              <dt className="text-[13px] text-ink-3">Default commission</dt>
+              <dt className="text-[13px] text-ink-3">You earn per deal</dt>
               <dd className="text-[13px] font-medium tabular-nums text-ink">
-                {affiliate ? `${affiliate.commission_rate}%` : "—"}
+                {affiliate
+                  ? commissionLabel(
+                      affiliate.commission_type,
+                      affiliate.commission_amount,
+                      affiliate.commission_rate,
+                    )
+                  : "—"}
               </dd>
             </div>
             <div className="flex items-center justify-between gap-4 px-5 py-3">

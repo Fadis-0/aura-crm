@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Globe, Mail, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { ConfirmDialog, Drawer } from "@/components/overlays";
 import { CreateDialog } from "@/components/create-dialog";
-import { Combobox } from "@/components/combobox";
 import { useServerState } from "@/lib/use-server-state";
 import {
   Avatar,
@@ -31,7 +30,6 @@ import {
   HEALTH_LABEL,
   PROJECT_STATUS_ACCENT,
   PROJECT_STATUS_LABEL,
-  type Affiliate,
   type Client,
   type ClientStatus,
   type Invoice,
@@ -44,12 +42,10 @@ export function ClientsView({
   initialClients,
   projects,
   invoices,
-  affiliates,
 }: {
   initialClients: Client[];
   projects: Project[];
   invoices: Invoice[];
-  affiliates: Affiliate[];
 }) {
   const sb = supabaseBrowser();
   const params = useSearchParams();
@@ -115,7 +111,6 @@ export function ClientsView({
       status: draft.status,
       health: draft.health,
       tier: draft.tier,
-      affiliate_id: draft.affiliate_id || null,
       lifetime_value: Number(draft.lifetime_value ?? 0),
       retainer_amount: draft.retainer_amount ? Number(draft.retainer_amount) : null,
       notes: draft.notes || null,
@@ -484,24 +479,6 @@ export function ClientsView({
                 />
               </Field>
             </div>
-
-            <Field label="Referred by" hint="affiliate">
-              <Combobox
-                value={draft.affiliate_id ?? null}
-                onChange={(v) => set("affiliate_id", v)}
-                options={affiliates.map((a) => ({
-                  value: a.id,
-                  label: a.name,
-                  hint: [a.company, `${a.commission_rate}% commission`]
-                    .filter(Boolean)
-                    .join(" · "),
-                  accent: a.accent,
-                }))}
-                placeholder="Nobody"
-                clearLabel="Nobody"
-                emptyLabel="No affiliate matches that"
-              />
-            </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Address">

@@ -34,6 +34,9 @@ export const isAdminRole = (role: Role | undefined | null) =>
 
 export type AffiliateStatus = "active" | "paused" | "ended";
 
+/** A flat fee per deal, or a share of the deal value. Flat is the default. */
+export type CommissionType = "fixed" | "percent";
+
 export type Affiliate = {
   id: ID;
   name: string;
@@ -41,6 +44,8 @@ export type Affiliate = {
   email: string | null;
   phone: string | null;
   status: AffiliateStatus;
+  commission_type: CommissionType;
+  commission_amount: number;
   commission_rate: number;
   /** Set when this affiliate is a marketer account rather than a contact. */
   profile_id: ID | null;
@@ -116,7 +121,6 @@ export type Client = {
   health: "good" | "watch" | "at_risk";
   tier: "standard" | "key" | "strategic";
   source: string;
-  affiliate_id: ID | null;
   lead_id: ID | null;
   owner_id: ID | null;
   lifetime_value: number;
@@ -163,6 +167,8 @@ export type Project = {
   /** Opened to marketers, who then see the brief and the asset library. */
   open_for_affiliates: boolean;
   affiliate_brief: string | null;
+  affiliate_commission_type: CommissionType;
+  affiliate_commission_amount: number | null;
   affiliate_commission_rate: number | null;
   affiliate_payout_note: string | null;
   created_at: string;
@@ -354,6 +360,7 @@ export type Commission = {
   client_id: ID | null;
   invoice_id: ID | null;
   amount: number;
+  commission_type: CommissionType;
   rate: number | null;
   status: "pending" | "approved" | "paid" | "cancelled";
   earned_on: string;

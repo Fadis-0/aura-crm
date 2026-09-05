@@ -45,6 +45,7 @@ import {
 } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, compactMoney, money, relativeTime } from "@/lib/utils";
+import { commissionFor, commissionLabel } from "@/components/commission-field";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -326,7 +327,7 @@ export function PipelineBoard({
       .update({ stage: "won", converted_client_id: data.id })
       .eq("id", selected.id);
 
-    // Book the affiliate's commission on the closed value.
+    // Book what the partner is owed, on their own terms.
     if (selected.affiliate_id) {
       const affiliate = affiliates.find((a) => a.id === selected.affiliate_id);
       if (affiliate) {
@@ -334,9 +335,14 @@ export function PipelineBoard({
           affiliate_id: affiliate.id,
           lead_id: selected.id,
           client_id: data.id,
-          rate: affiliate.commission_rate,
-          amount:
-            ((selected.estimated_value ?? 0) * affiliate.commission_rate) / 100,
+          commission_type: affiliate.commission_type,
+          rate: affiliate.commission_type === "percent" ? affiliate.commission_rate : null,
+          amount: commissionFor(
+            affiliate.commission_type,
+            affiliate.commission_amount,
+            affiliate.commission_rate,
+            selected.estimated_value ?? 0,
+          ),
           note: `Closed ${selected.name}`,
         });
       }
@@ -569,7 +575,10 @@ export function PipelineBoard({
                 options={affiliates.map((a) => ({
                   value: a.id,
                   label: a.name,
-                  hint: [a.company, `${a.commission_rate}% commission`]
+                  hint: [
+                    a.company,
+                    `${commissionLabel(a.commission_type, a.commission_amount, a.commission_rate)} per deal`,
+                  ]
                     .filter(Boolean)
                     .join(" · "),
                   accent: a.accent,

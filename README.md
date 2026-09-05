@@ -97,8 +97,13 @@ Open http://localhost:3000 and sign in with the owner email and password.
 ### The marketer portal
 
 Marketers sign up at `/signup` with their name, email, phone, optional social
-link and a password. They land on a waiting screen and you get a notification.
-Approve them under **Affiliates → Marketer accounts** and they get in.
+link, wilaya, commune, address and a password. They land on a waiting screen
+and you get a notification. Approve them from the **Affiliates** page.
+
+You can also add a partner yourself with **Affiliates → New**. That form takes
+the same details plus an email and password, and the account is live at once:
+you vouching for someone is the approval. Pass the credentials on and they can
+change the password from their settings.
 
 What a marketer can do:
 
@@ -108,6 +113,12 @@ What a marketer can do:
 - Add a project to their list, or drop it.
 - Add leads and drag them along their own pipeline.
 - See their own commissions, paid and owed.
+- Set the CCP account their payouts go to.
+
+**Commission** is a flat amount per closed deal by default, set per partner and
+optionally overridden per project. Switch a partner or a project to a
+percentage of the deal value when that is the arrangement. Payouts go to a CCP
+account: the RIP is the only payout route the app records.
 
 What a marketer cannot do, enforced by the database rather than the interface:
 see clients, invoices, notes, chat, planning, other marketers' leads, or any

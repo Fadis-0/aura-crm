@@ -230,6 +230,59 @@ h3,
   background-clip: content-box;
 }
 
+/* Form controls -------------------------------------------------------- */
+
+/* The option popup is drawn by the browser, not by us, and it follows
+   color-scheme rather than our tokens. Left alone it stays grey-on-white in
+   dark mode, so the controls are told explicitly which scheme they are in. */
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea {
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) select,
+  :root:not([data-theme="light"]) input,
+  :root:not([data-theme="light"]) textarea {
+    color-scheme: dark;
+  }
+}
+:root[data-theme="light"] select,
+:root[data-theme="light"] input,
+:root[data-theme="light"] textarea {
+  color-scheme: light;
+}
+
+/* And paint the list itself, which Firefox and Chrome both honour. */
+option,
+optgroup {
+  background-color: var(--surface);
+  color: var(--ink);
+}
+
+/* Number spinners eat the right-hand side of a short field and hide the value
+   underneath. Every numeric input here is typed, never stepped. */
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* The native date and time pickers ship a dark icon on a dark ground. */
+:root[data-theme="dark"] input::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) input::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
+  }
+}
+
 /* Tailwind 4 resets buttons to the default arrow. Anything clickable should
    say so, including cards and rows that are really buttons underneath. */
 :where(button, [role="button"], [role="radio"], [role="switch"], [role="menuitem"], label, summary):not(:disabled):not([aria-disabled="true"]) {

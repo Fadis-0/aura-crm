@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Check, FolderOpen, Plus, Target } from "lucide-react";
 import { AssetRow } from "@/components/assets/asset-kit";
+import { commissionLabel } from "@/components/commission-field";
 import {
   Badge,
   Button,
@@ -125,10 +126,15 @@ export function PortalProjectDetail({
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
         {[
           {
-            label: "Commission",
-            value: project.affiliate_commission_rate
-              ? `${project.affiliate_commission_rate}%`
-              : "To be confirmed",
+            label: "You earn",
+            value:
+              project.affiliate_commission_amount || project.affiliate_commission_rate
+                ? commissionLabel(
+                    project.affiliate_commission_type,
+                    project.affiliate_commission_amount,
+                    project.affiliate_commission_rate,
+                  )
+                : "To be confirmed",
             color: "var(--clay)",
           },
           {

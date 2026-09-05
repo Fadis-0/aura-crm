@@ -30,10 +30,12 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { cn, compactMoney, money, relativeTime } from "@/lib/utils";
+import { commissionFor } from "@/components/commission-field";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
   STAGE_LABEL,
+  type Affiliate,
   type Lead,
   type LeadStage,
 } from "@/lib/types";
@@ -158,11 +160,11 @@ function Column({
 export function PortalLeads({
   initialLeads,
   affiliateId,
-  commissionRate,
+  affiliate,
 }: {
   initialLeads: Lead[];
   affiliateId: string | null;
-  commissionRate: number | null;
+  affiliate: Affiliate | null;
 }) {
   const sb = supabaseBrowser();
 
@@ -180,16 +182,31 @@ export function PortalLeads({
 
   const open = leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
   const totals = useMemo(() => {
-    const wonValue = leads
-      .filter((l) => l.stage === "won")
-      .reduce((s, l) => s + (l.estimated_value ?? 0), 0);
+    const wonLeads = leads.filter((l) => l.stage === "won");
+
+    // Each closed deal earns on the partner's own terms, so add them up one by
+    // one rather than applying a single rate to the total.
+    const commission = affiliate
+      ? wonLeads.reduce(
+          (s, l) =>
+            s +
+            commissionFor(
+              affiliate.commission_type,
+              affiliate.commission_amount,
+              affiliate.commission_rate,
+              l.estimated_value ?? 0,
+            ),
+          0,
+        )
+      : 0;
+
     return {
       open: open.reduce((s, l) => s + (l.estimated_value ?? 0), 0),
-      won: wonValue,
-      wonCount: leads.filter((l) => l.stage === "won").length,
-      commission: commissionRate ? (wonValue * commissionRate) / 100 : 0,
+      won: wonLeads.reduce((s, l) => s + (l.estimated_value ?? 0), 0),
+      wonCount: wonLeads.length,
+      commission,
     };
-  }, [leads, open, commissionRate]);
+  }, [leads, open, affiliate]);
 
   const onDragEnd = async (e: DragEndEvent) => {
     setActiveId(null);
@@ -271,7 +288,7 @@ export function PortalLeads({
           { label: "Deals won", value: String(totals.wonCount), color: "var(--indigo)" },
           {
             label: "Your cut",
-            value: commissionRate ? money(totals.commission) : "—",
+            value: affiliate ? money(totals.commission) : "—",
             color: "var(--amber)",
           },
         ].map((s) => (

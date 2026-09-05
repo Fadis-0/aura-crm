@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import { cn, initials, type Accent } from "@/lib/utils";
 
 /* ------------------------------------------------------------------ Button */
@@ -232,25 +232,41 @@ export const Textarea = React.forwardRef<
   );
 });
 
+/**
+ * The native select, kept for short fixed lists.
+ *
+ * The chevron is a real icon rather than a background image so it follows the
+ * theme, and the option popup is drawn by the browser: `color-scheme` on the
+ * element is what makes that popup dark rather than grey-on-white.
+ */
 export const Select = React.forwardRef<
   HTMLSelectElement,
   React.SelectHTMLAttributes<HTMLSelectElement>
 >(function Select({ className, children, ...props }, ref) {
   return (
-    <select
-      ref={ref}
-      className={cn(
-        "h-9 w-full appearance-none rounded-md border border-line bg-surface px-3 pr-8 text-[13px] text-ink",
-        "bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%237c7167%22 stroke-width=%222%22 stroke-linecap=%22round%22><path d=%22m6 9 6 6 6-6%22/></svg>')] bg-[length:14px] bg-[right_0.6rem_center] bg-no-repeat",
-        "transition-colors hover:border-line-2 focus:border-[var(--clay)] focus:outline-none focus:ring-2 focus:ring-[var(--clay)]/18",
-        className,
-      )}
-      {...props}
-    >
-      {children}
-    </select>
+    <span className="relative block w-full">
+      <select
+        ref={ref}
+        className={cn(
+          "h-9 w-full appearance-none rounded-md border border-line bg-surface px-3 pr-9 text-[13px] text-ink",
+          "transition-colors hover:border-line-2",
+          "focus:border-[var(--clay)] focus:outline-none focus:ring-2 focus:ring-[var(--clay)]/18",
+          "disabled:opacity-60",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </select>
+      <ChevronDown
+        size={14}
+        aria-hidden
+        className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-4"
+      />
+    </span>
   );
 });
+
 
 export function Field({
   label,

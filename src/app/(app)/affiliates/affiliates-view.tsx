@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog, Drawer } from "@/components/overlays";
 import { CreateDialog } from "@/components/create-dialog";
+import { removePartner } from "./actions";
 import {
   Avatar,
   Badge,
@@ -34,6 +35,7 @@ import {
   Textarea,
 } from "@/components/ui";
 import { InteractionTimeline } from "@/components/interaction-timeline";
+import { CommissionField, commissionLabel } from "@/components/commission-field";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { accentFor, cn, money, relativeTime } from "@/lib/utils";
@@ -44,6 +46,7 @@ import type {
   Affiliate,
   Client,
   Commission,
+  CommissionType,
   Lead,
   Profile,
 } from "@/lib/types";
@@ -231,7 +234,9 @@ export function AffiliatesView({
       email: draft.email || null,
       phone: draft.phone || null,
       status: draft.status,
-      commission_rate: Number(draft.commission_rate ?? 10),
+      commission_type: draft.commission_type ?? "fixed",
+      commission_amount: Number(draft.commission_amount ?? 0),
+      commission_rate: Number(draft.commission_rate ?? 0),
       ccp_rip: draft.ccp_rip ? normaliseRip(draft.ccp_rip) : null,
       ccp_holder: draft.ccp_holder || null,
       notes: draft.notes || null,
@@ -249,9 +254,14 @@ export function AffiliatesView({
 
   const remove = async () => {
     if (!selected) return;
-    const { error } = await sb.from("affiliates").delete().eq("id", selected.id);
-    if (error) return toast.error(error.message);
-    setAffiliates((list) => list.filter((a) => a.id !== selected.id));
+    setSaving(true);
+    const result = await removePartner(selected.id);
+    setSaving(false);
+    if (!result.ok) return toast.error(result.error);
+
+    const gone = selected.id;
+    setAffiliates((list) => list.filter((a) => a.id !== gone));
+    setMarketers((list) => list.filter((m) => m.id !== selected.profile_id));
     setConfirmDelete(false);
     setSelected(null);
     toast.success("Partner removed");
@@ -400,7 +410,13 @@ export function AffiliatesView({
                         ) : (
                           <Badge accent={PARTNER_ACCENT[a.status]}>contact</Badge>
                         )}
-                        <Badge accent="clay">{a.commission_rate}%</Badge>
+                        <Badge accent="clay">
+                          {commissionLabel(
+                            a.commission_type,
+                            a.commission_amount,
+                            a.commission_rate,
+                          )}
+                        </Badge>
                       </div>
 
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px] text-ink-4">
@@ -531,7 +547,14 @@ export function AffiliatesView({
               <Badge accent={PARTNER_ACCENT[selected.status]} dot>
                 {selected.status}
               </Badge>
-              <span>{selected.commission_rate}% commission</span>
+              <span>
+                {commissionLabel(
+                  selected.commission_type,
+                  selected.commission_amount,
+                  selected.commission_rate,
+                )}{" "}
+                per closed deal
+              </span>
             </span>
           ) : null
         }
@@ -572,27 +595,26 @@ export function AffiliatesView({
               </Field>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Status">
-                <Select
-                  value={draft.status ?? "active"}
-                  onChange={(e) => set("status", e.target.value as Affiliate["status"])}
-                >
-                  <option value="active">Active</option>
-                  <option value="paused">Paused</option>
-                  <option value="ended">Ended</option>
-                </Select>
-              </Field>
-              <Field label="Commission rate" hint="%">
-                <Input
-                  type="number"
-                  min={0}
-                  max={100}
-                  value={draft.commission_rate ?? 10}
-                  onChange={(e) => set("commission_rate", Number(e.target.value))}
-                />
-              </Field>
-            </div>
+            <Field label="Status" className="max-w-[200px]">
+              <Select
+                value={draft.status ?? "active"}
+                onChange={(e) => set("status", e.target.value as Affiliate["status"])}
+              >
+                <option value="active">Active</option>
+                <option value="paused">Paused</option>
+                <option value="ended">Ended</option>
+              </Select>
+            </Field>
+
+            {/* Full width: squeezed into half a row the amount was unreadable. */}
+            <CommissionField
+              type={draft.commission_type ?? "fixed"}
+              amount={draft.commission_amount ?? 0}
+              rate={draft.commission_rate ?? 0}
+              onTypeChange={(t) => set("commission_type", t as CommissionType)}
+              onAmountChange={(v) => set("commission_amount", v)}
+              onRateChange={(v) => set("commission_rate", v)}
+            />
 
             <section>
               <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
@@ -746,8 +768,13 @@ export function AffiliatesView({
         open={confirmDelete}
         onClose={() => setConfirmDelete(false)}
         onConfirm={remove}
+        loading={saving}
         title="Remove this partner?"
-        message={`${selected?.name ?? "This partner"} will be removed. Their leads stay but lose the attribution.`}
+        message={
+          selectedRow?.account
+            ? `${selected?.name ?? "This partner"} loses their sign-in account for good, and everything they submitted loses its attribution. Pausing them instead keeps the history.`
+            : `${selected?.name ?? "This partner"} will be removed. Their leads stay but lose the attribution.`
+        }
       />
     </>
   );

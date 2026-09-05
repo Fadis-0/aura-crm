@@ -3,6 +3,7 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { LOCALE, money } from "@/lib/utils";
+import { commissionLabel } from "@/components/commission-field";
 import type { Commission, Lead } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -43,14 +44,24 @@ export default async function EarningsPage() {
     .reduce((s, c) => s + c.amount, 0);
 
   const won = leads.filter((l) => l.stage === "won");
-  const rate = affiliate?.commission_rate ?? 0;
+  const terms = affiliate
+    ? commissionLabel(
+        affiliate.commission_type,
+        affiliate.commission_amount,
+        affiliate.commission_rate,
+      )
+    : null;
 
   return (
     <>
       <PageHeader
         eyebrow="Money"
         title="Earnings"
-        description={`You earn ${rate}% on what you close, unless a project says otherwise.`}
+        description={
+          terms
+            ? `You earn ${terms} on every deal you close, unless a project says otherwise.`
+            : "What you have earned and what is still owed to you."
+        }
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">
@@ -94,7 +105,7 @@ export default async function EarningsPage() {
                 <tr className="border-b border-line bg-surface-2/60 text-[11px] uppercase tracking-[0.12em] text-ink-4">
                   <th className="px-4 py-2.5 font-semibold">Earned</th>
                   <th className="px-4 py-2.5 font-semibold">For</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Rate</th>
+                  <th className="px-4 py-2.5 text-right font-semibold">Basis</th>
                   <th className="px-4 py-2.5 text-right font-semibold">Amount</th>
                   <th className="px-4 py-2.5 font-semibold">Status</th>
                 </tr>
@@ -116,7 +127,7 @@ export default async function EarningsPage() {
                       {c.note ?? "Commission"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-[12.5px] tabular-nums text-ink-3">
-                      {c.rate ? `${c.rate}%` : "—"}
+                      {c.commission_type === "percent" && c.rate ? `${c.rate}%` : "Fixed"}
                     </td>
                     <td className="px-4 py-2.5 text-right text-[13px] font-medium tabular-nums text-ink">
                       {money(c.amount)}

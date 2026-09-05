@@ -13,9 +13,13 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/overlays";
 import { Combobox, type ComboOption } from "@/components/combobox";
+import { CommissionField, commissionLabel } from "@/components/commission-field";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { createPartnerAccount } from "@/app/(app)/affiliates/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { WILAYAS } from "@/lib/algeria";
 import { cn } from "@/lib/utils";
+import type { CommissionType } from "@/lib/types";
 
 export type CreateKind =
   | "lead"
@@ -37,7 +41,7 @@ const KINDS: {
   { value: "project", label: "Project", icon: FolderKanban, blurb: "Work to deliver", table: "projects" },
   { value: "task", label: "Task", icon: ListChecks, blurb: "A single to-do", table: "tasks" },
   { value: "event", label: "Event", icon: CalendarDays, blurb: "Meeting or deadline", table: "events" },
-  { value: "affiliate", label: "Affiliate", icon: Handshake, blurb: "Sends you leads", table: "affiliates" },
+  { value: "affiliate", label: "Partner", icon: Handshake, blurb: "Sends you leads, gets a login", table: "affiliates" },
 ];
 
 const todayLocal = () => {
@@ -73,6 +77,7 @@ export function CreateDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
+  const [commissionType, setCommissionType] = useState<CommissionType>("fixed");
   const [affiliates, setAffiliates] = useState<ComboOption[]>([]);
   const [clients, setClients] = useState<ComboOption[]>([]);
   const [projects, setProjects] = useState<ComboOption[]>([]);
@@ -86,13 +91,24 @@ export function CreateDialog({
 
     (async () => {
       const [aff, cli, prj] = await Promise.all([
-        sb.from("affiliates").select("id,name,company,commission_rate,accent").order("name"),
+        sb
+          .from("affiliates")
+          .select("id,name,company,commission_type,commission_amount,commission_rate,accent")
+          .order("name"),
         sb.from("clients").select("id,name,company,accent").order("name"),
         sb.from("projects").select("id,name,code,accent").eq("archived", false).order("name"),
       ]);
       if (cancelled) return;
 
-      type A = { id: string; name: string; company: string | null; commission_rate: number; accent: string };
+      type A = {
+        id: string;
+        name: string;
+        company: string | null;
+        commission_type: CommissionType;
+        commission_amount: number;
+        commission_rate: number;
+        accent: string;
+      };
       type C = { id: string; name: string; company: string | null; accent: string };
       type P = { id: string; name: string; code: string | null; accent: string };
 
@@ -100,7 +116,12 @@ export function CreateDialog({
         ((aff.data ?? []) as A[]).map((a) => ({
           value: a.id,
           label: a.name,
-          hint: [a.company, `${a.commission_rate}% commission`].filter(Boolean).join(" · "),
+          hint: [
+            a.company,
+            `${commissionLabel(a.commission_type, a.commission_amount, a.commission_rate)} per deal`,
+          ]
+            .filter(Boolean)
+            .join(" · "),
           accent: a.accent,
         })),
       );
@@ -130,11 +151,54 @@ export function CreateDialog({
 
   const close = () => {
     setForm({});
+    setCommissionType("fixed");
     setKind(only ?? "lead");
     onClose();
   };
 
+  /**
+   * A partner is an account, not just a row, so this goes through a server
+   * action: creating the login needs credentials the browser must never hold.
+   */
+  const savePartner = async () => {
+    const name = (form.name ?? "").trim();
+    if (!name) return toast.error("Give the partner a name.");
+    if (!(form.email ?? "").trim()) return toast.error("An email is required to sign in.");
+    if ((form.password ?? "").length < 8) {
+      return toast.error("The password needs at least 8 characters.");
+    }
+
+    setSaving(true);
+    const result = await createPartnerAccount({
+      fullName: name,
+      email: form.email,
+      password: form.password,
+      phone: form.phone,
+      social: form.social,
+      wilaya: form.wilaya,
+      commune: form.commune,
+      addressLine: form.addressLine,
+      postalCode: form.postalCode,
+      company: form.company,
+      notes: form.notes,
+      commissionType,
+      commissionAmount: form.amount ? Number(form.amount) : 0,
+      commissionRate: form.rate ? Number(form.rate) : 0,
+      ccpRip: form.ccpRip,
+      ccpHolder: form.ccpHolder,
+    });
+    setSaving(false);
+
+    if (!result.ok) return toast.error(result.error);
+
+    toast.success(`${name} can sign in now`);
+    close();
+    router.refresh();
+  };
+
   const save = async () => {
+    if (kind === "affiliate") return savePartner();
+
     const name = (form.name ?? "").trim();
     if (!name) {
       toast.error("Give it a name first.");
@@ -192,15 +256,8 @@ export function CreateDialog({
                     phone: form.phone || null,
                     status: "active",
                     retainer_amount: form.retainer ? Number(form.retainer) : null,
-                    affiliate_id: form.affiliate || null,
                   }
-                : {
-                    name,
-                    company: form.company || null,
-                    email: form.email || null,
-                    phone: form.phone || null,
-                    commission_rate: form.rate ? Number(form.rate) : 10,
-                  };
+                : {};
 
     const { data, error } = await sb
       .from(meta.table)
@@ -238,7 +295,7 @@ export function CreateDialog({
         <>
           <Button onClick={close}>Cancel</Button>
           <Button variant="primary" loading={saving} onClick={save}>
-            Create
+            {kind === "affiliate" ? "Create account" : "Create"}
           </Button>
         </>
       }
@@ -283,7 +340,7 @@ export function CreateDialog({
           />
         </Field>
 
-        {(kind === "lead" || kind === "client" || kind === "affiliate") && (
+        {(kind === "lead" || kind === "client") && (
           <>
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Company">
@@ -371,37 +428,154 @@ export function CreateDialog({
         )}
 
         {kind === "client" && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Monthly retainer" hint="DA">
-              <Input
-                type="number"
-                value={form.retainer ?? ""}
-                onChange={(e) => set("retainer", e.target.value)}
-                placeholder="300000"
-              />
-            </Field>
-            <Field label="Referred by" hint="optional">
-              <Combobox
-                value={form.affiliate ?? null}
-                onChange={(v) => set("affiliate", v ?? "")}
-                options={affiliates}
-                placeholder="Nobody"
-                clearLabel="Nobody"
-              />
-            </Field>
-          </div>
+          <Field label="Monthly retainer" hint="DA">
+            <Input
+              type="number"
+              value={form.retainer ?? ""}
+              onChange={(e) => set("retainer", e.target.value)}
+              placeholder="300000"
+            />
+          </Field>
         )}
 
         {kind === "affiliate" && (
-          <Field label="Commission rate" hint="%">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={form.rate ?? "10"}
-              onChange={(e) => set("rate", e.target.value)}
-            />
-          </Field>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Company" hint="optional">
+                <Input
+                  value={form.company ?? ""}
+                  onChange={(e) => set("company", e.target.value)}
+                />
+              </Field>
+              <Field label="Phone" required>
+                <Input
+                  type="tel"
+                  value={form.phone ?? ""}
+                  onChange={(e) => set("phone", e.target.value)}
+                  placeholder="+213 ..."
+                />
+              </Field>
+            </div>
+
+            <Field label="Social link" hint="optional">
+              <Input
+                type="url"
+                value={form.social ?? ""}
+                onChange={(e) => set("social", e.target.value)}
+                placeholder="https://instagram.com/them"
+              />
+            </Field>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Wilaya">
+                <Select
+                  value={form.wilaya ?? ""}
+                  onChange={(e) => set("wilaya", e.target.value)}
+                >
+                  <option value="">Choose…</option>
+                  {WILAYAS.map((w) => (
+                    <option key={w} value={w}>
+                      {w}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Commune">
+                <Input
+                  value={form.commune ?? ""}
+                  onChange={(e) => set("commune", e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-[1fr_150px]">
+              <Field label="Address">
+                <Input
+                  value={form.addressLine ?? ""}
+                  onChange={(e) => set("addressLine", e.target.value)}
+                />
+              </Field>
+              <Field label="Postal code">
+                <Input
+                  inputMode="numeric"
+                  value={form.postalCode ?? ""}
+                  onChange={(e) => set("postalCode", e.target.value)}
+                  placeholder="16000"
+                />
+              </Field>
+            </div>
+
+            <div className="border-t border-line pt-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                Terms and payout
+              </p>
+              <div className="space-y-3">
+                <CommissionField
+                  type={commissionType}
+                  amount={form.amount ? Number(form.amount) : 0}
+                  rate={form.rate ? Number(form.rate) : 0}
+                  onTypeChange={setCommissionType}
+                  onAmountChange={(v) => set("amount", String(v))}
+                  onRateChange={(v) => set("rate", String(v))}
+                />
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="CCP RIP" hint="optional">
+                    <Input
+                      inputMode="numeric"
+                      value={form.ccpRip ?? ""}
+                      onChange={(e) => set("ccpRip", e.target.value)}
+                      placeholder="0012 3456 7890 1234 5678"
+                      className="font-mono tracking-wide"
+                    />
+                  </Field>
+                  <Field label="Account holder" hint="optional">
+                    <Input
+                      value={form.ccpHolder ?? ""}
+                      onChange={(e) => set("ccpHolder", e.target.value)}
+                      placeholder={form.name ?? ""}
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-line pt-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                Sign-in details
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Email" required>
+                  <Input
+                    type="email"
+                    value={form.email ?? ""}
+                    onChange={(e) => set("email", e.target.value)}
+                    placeholder="them@example.com"
+                  />
+                </Field>
+                <Field label="Password" hint="8 characters or more" required>
+                  <Input
+                    type="text"
+                    value={form.password ?? ""}
+                    onChange={(e) => set("password", e.target.value)}
+                    placeholder="Something they can change later"
+                  />
+                </Field>
+              </div>
+              <p className="mt-2 text-[11.5px] leading-relaxed text-ink-4">
+                Pass these on to them. The account works immediately, with no
+                approval step, and they can change the password once inside.
+              </p>
+            </div>
+
+            <Field label="Notes" hint="optional">
+              <Textarea
+                rows={2}
+                value={form.notes ?? ""}
+                onChange={(e) => set("notes", e.target.value)}
+              />
+            </Field>
+          </>
         )}
 
         {kind === "project" && (

@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "@/components/overlays";
 import { AssetManager } from "@/components/assets/asset-manager";
+import { CommissionField } from "@/components/commission-field";
 import {
   Avatar,
   Badge,
@@ -41,6 +42,7 @@ import {
   PROJECT_STATUS_LABEL,
   type Affiliate,
   type Client,
+  type CommissionType,
   type Invoice,
   type Priority,
   type Profile,
@@ -115,9 +117,9 @@ export function ProjectDetail({
       due_date: draft.due_date || null,
       open_for_affiliates: draft.open_for_affiliates,
       affiliate_brief: draft.affiliate_brief || null,
-      affiliate_commission_rate: draft.affiliate_commission_rate
-        ? Number(draft.affiliate_commission_rate)
-        : null,
+      affiliate_commission_type: draft.affiliate_commission_type ?? "fixed",
+      affiliate_commission_amount: Number(draft.affiliate_commission_amount ?? 0),
+      affiliate_commission_rate: Number(draft.affiliate_commission_rate ?? 0),
       affiliate_payout_note: draft.affiliate_payout_note || null,
     };
     const { error } = await sb.from("projects").update(patch).eq("id", project.id);
@@ -390,29 +392,25 @@ export function ProjectDetail({
                   />
                 </Field>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <Field label="Commission" hint="%">
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={draft.affiliate_commission_rate ?? ""}
-                      onChange={(e) =>
-                        set("affiliate_commission_rate", Number(e.target.value))
-                      }
-                      placeholder="15"
-                    />
-                  </Field>
-                  <Field label="Working it">
-                    <div className="flex h-9 items-center gap-1.5 text-[13px] text-ink-2">
-                      <Users size={14} className="text-ink-4" />
-                      {activeMarketers.length}
-                      <span className="text-ink-4">
-                        {activeMarketers.length === 1 ? "marketer" : "marketers"}
-                      </span>
-                    </div>
-                  </Field>
-                </div>
+                <CommissionField
+                  type={draft.affiliate_commission_type ?? "fixed"}
+                  amount={draft.affiliate_commission_amount ?? 0}
+                  rate={draft.affiliate_commission_rate ?? 0}
+                  onTypeChange={(t) =>
+                    set("affiliate_commission_type", t as CommissionType)
+                  }
+                  onAmountChange={(v) => set("affiliate_commission_amount", v)}
+                  onRateChange={(v) => set("affiliate_commission_rate", v)}
+                  label="What a partner earns"
+                  sampleValue={draft.budget}
+                />
+
+                <p className="flex items-center gap-1.5 text-[12px] text-ink-3">
+                  <Users size={13} className="text-ink-4" />
+                  {activeMarketers.length}{" "}
+                  {activeMarketers.length === 1 ? "partner is" : "partners are"} working
+                  this
+                </p>
 
                 <Field label="Payout terms" hint="shown on their project page">
                   <Textarea

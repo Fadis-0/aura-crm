@@ -23,6 +23,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { LOCALE } from "@/lib/utils";
+import { commissionLabel } from "@/components/commission-field";
 import type { Project, ProjectMarketer } from "@/lib/types";
 
 type Filter = "all" | "mine" | "available";
@@ -197,9 +198,14 @@ export function PortalProjects({
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {p.affiliate_commission_rate ? (
+                  {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
                     <Badge accent="clay">
-                      {p.affiliate_commission_rate}% commission
+                      {commissionLabel(
+                        p.affiliate_commission_type,
+                        p.affiliate_commission_amount,
+                        p.affiliate_commission_rate,
+                      )}{" "}
+                      per deal
                     </Badge>
                   ) : null}
                   {files > 0 ? (

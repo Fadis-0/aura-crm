@@ -18,11 +18,25 @@ alter table public.profiles add column if not exists postal_code text;
 alter table public.affiliates add column if not exists ccp_rip text;
 alter table public.affiliates add column if not exists ccp_holder text;
 
-update public.affiliates
-   set ccp_rip = nullif(trim(payout_details), '')
- where ccp_rip is null
-   and payout_details is not null
-   and payout_details ~ '^[0-9 ]+$';
+-- Carry over anything that already looked like a RIP, but only on the first
+-- run: the columns are gone afterwards.
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'affiliates'
+      and column_name = 'payout_details'
+  ) then
+    execute $sql$
+      update public.affiliates
+         set ccp_rip = nullif(trim(payout_details), '')
+       where ccp_rip is null
+         and payout_details is not null
+         and payout_details ~ '^[0-9 ]+$'
+    $sql$;
+  end if;
+end $$;
 
 alter table public.affiliates drop column if exists payout_method;
 alter table public.affiliates drop column if exists payout_details;
