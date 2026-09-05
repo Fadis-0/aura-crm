@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   DragOverlay,
@@ -30,7 +31,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { cn, compactMoney, money, relativeTime } from "@/lib/utils";
-import { commissionFor } from "@/components/commission-field";
+import { commissionFor } from "@/lib/commission";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -348,11 +349,20 @@ export function PortalLeads({
             />
           </div>
 
-          <DragOverlay dropAnimation={null}>
-            {activeLead ? (
-              <LeadCard lead={activeLead} onOpen={() => {}} dragging />
-            ) : null}
-          </DragOverlay>
+          {/* dnd-kit's DragOverlay does not portal itself, so it renders in
+              place in the tree and the page's entrance-animation ancestor (a
+              CSS transform) hijacks its fixed positioning mid-drag, throwing
+              it off the cursor. Portaling it to <body> ourselves fixes it. */}
+          {typeof document !== "undefined"
+            ? createPortal(
+                <DragOverlay dropAnimation={null}>
+                  {activeLead ? (
+                    <LeadCard lead={activeLead} onOpen={() => {}} dragging />
+                  ) : null}
+                </DragOverlay>,
+                document.body,
+              )
+            : null}
         </DndContext>
       )}
 

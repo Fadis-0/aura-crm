@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -45,7 +46,7 @@ import {
 } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, compactMoney, money, relativeTime } from "@/lib/utils";
-import { commissionFor, commissionLabel } from "@/components/commission-field";
+import { commissionFor, commissionLabel } from "@/lib/commission";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -447,18 +448,27 @@ export function PipelineBoard({
           {/*
             No wrapper with its own width. dnd-kit sizes the overlay to the card
             being dragged, so a fixed width here would make the card sit away
-            from the cursor.
+            from the cursor. dnd-kit's DragOverlay does not portal itself, so
+            it renders in place in the tree; the page's entrance-animation
+            ancestor (a CSS transform) then hijacks its fixed positioning,
+            throwing it off the cursor as you drag. Portaling it to <body>
+            ourselves keeps it out of any transformed ancestor's reach.
           */}
-          <DragOverlay dropAnimation={null}>
-            {activeLead ? (
-              <LeadCard
-                lead={activeLead}
-                affiliate={affiliates.find((a) => a.id === activeLead.affiliate_id)}
-                onOpen={() => {}}
-                dragging
-              />
-            ) : null}
-          </DragOverlay>
+          {typeof document !== "undefined"
+            ? createPortal(
+                <DragOverlay dropAnimation={null}>
+                  {activeLead ? (
+                    <LeadCard
+                      lead={activeLead}
+                      affiliate={affiliates.find((a) => a.id === activeLead.affiliate_id)}
+                      onOpen={() => {}}
+                      dragging
+                    />
+                  ) : null}
+                </DragOverlay>,
+                document.body,
+              )
+            : null}
         </DndContext>
       )}
 

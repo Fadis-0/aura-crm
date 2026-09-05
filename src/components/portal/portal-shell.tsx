@@ -29,6 +29,10 @@ const NAV = [
   { href: "/portal/settings", label: "Settings", icon: Settings },
 ];
 
+/**
+ * A thin bar that fills across a nav item the moment it is clicked, so the
+ * click registers even before the new page has anything to show.
+ */
 function NavPending() {
   const { pending } = useLinkStatus();
   if (!pending) return null;
@@ -43,6 +47,108 @@ function NavPending() {
   );
 }
 
+function PortalSidebar({
+  profile,
+  mobileOpen,
+  onCloseMobile,
+}: {
+  profile: Profile;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
+}) {
+  const pathname = usePathname();
+  const links = NAV.map((item) => ({
+    ...item,
+    active: item.exact ? pathname === item.href : pathname.startsWith(item.href),
+  }));
+
+  return (
+    <>
+      {mobileOpen ? (
+        <div
+          className="fixed inset-0 z-30 bg-[#1a140c]/40 backdrop-blur-[2px] lg:hidden"
+          onClick={onCloseMobile}
+        />
+      ) : null}
+
+      <aside
+        className={cn(
+          "fixed inset-y-0 left-0 z-40 flex w-[var(--sidebar-w)] flex-col border-r border-line bg-paper-2 transition-transform duration-200",
+          mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        )}
+      >
+        <div className="flex h-[var(--topbar-h)] items-center gap-2.5 border-b border-line px-4">
+          <Link href="/portal" className="flex items-center gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--clay)] font-display text-[15px] font-semibold text-white shadow-soft">
+              A
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-display text-[15px] leading-none text-ink">
+                Aura
+              </p>
+              <p className="mt-1 truncate text-[10.5px] uppercase tracking-[0.14em] text-ink-4">
+                Partner
+              </p>
+            </div>
+          </Link>
+        </div>
+
+        <nav className="flex-1 overflow-y-auto px-3 py-4">
+          <ul className="space-y-0.5">
+            {links.map((item) => (
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  onClick={onCloseMobile}
+                  className={cn(
+                    "group relative flex items-center gap-2.5 overflow-hidden rounded-md px-2 py-[7px] text-[13px] font-medium transition-colors",
+                    "active:scale-[0.99]",
+                    item.active
+                      ? "bg-surface text-ink shadow-soft"
+                      : "text-ink-3 hover:bg-surface/70 hover:text-ink",
+                  )}
+                >
+                  {item.active ? (
+                    <span className="absolute -left-3 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[var(--clay)]" />
+                  ) : null}
+                  <NavPending />
+                  <item.icon
+                    size={16}
+                    strokeWidth={item.active ? 2.2 : 1.9}
+                    className={item.active ? "text-[var(--clay)]" : ""}
+                  />
+                  <span className="flex-1 truncate">{item.label}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <Link
+          href="/portal/settings"
+          onClick={onCloseMobile}
+          className="m-3 flex items-center gap-2.5 rounded-lg border border-line bg-surface p-2 transition-colors hover:border-line-2"
+        >
+          <Avatar
+            name={profile.full_name}
+            src={profile.avatar_url}
+            accent={profile.accent}
+            size="sm"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12.5px] font-medium text-ink">
+              {profile.full_name}
+            </p>
+            <p className="truncate text-[11px] text-ink-4">{profile.email}</p>
+          </div>
+        </Link>
+      </aside>
+
+      <div className="hidden w-[var(--sidebar-w)] shrink-0 lg:block" />
+    </>
+  );
+}
+
 export function PortalShell({
   profile,
   notifications,
@@ -52,9 +158,8 @@ export function PortalShell({
   notifications: Notification[];
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
   const router = useRouter();
-  const [navOpen, setNavOpen] = useState(false);
+  const [mobileNav, setMobileNav] = useState(false);
 
   const signOut = async () => {
     await supabaseBrowser().auth.signOut();
@@ -62,40 +167,23 @@ export function PortalShell({
     router.refresh();
   };
 
-  const links = NAV.map((item) => ({
-    ...item,
-    active: item.exact ? pathname === item.href : pathname.startsWith(item.href),
-  }));
-
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-30 border-b border-line bg-paper/85 backdrop-blur-md">
-        <div className="mx-auto flex h-[var(--topbar-h)] w-full max-w-[1200px] items-center gap-3 px-4 sm:px-6">
-          <Link href="/portal" className="flex shrink-0 items-center gap-2.5">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-[var(--clay)] font-display text-[15px] font-semibold text-white shadow-soft">
-              A
-            </span>
-            <span className="font-display text-[15px] leading-none">Aura</span>
-          </Link>
+    <div className="flex min-h-screen">
+      <PortalSidebar
+        profile={profile}
+        mobileOpen={mobileNav}
+        onCloseMobile={() => setMobileNav(false)}
+      />
 
-          <nav className="ml-4 hidden items-center gap-0.5 md:flex">
-            {links.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "relative inline-flex h-8 items-center gap-1.5 overflow-hidden rounded-md px-2.5 text-[13px] font-medium transition-colors active:scale-[0.99]",
-                  item.active
-                    ? "bg-surface text-ink shadow-soft"
-                    : "text-ink-3 hover:bg-surface/70 hover:text-ink",
-                )}
-              >
-                <item.icon size={14} />
-                {item.label}
-                <NavPending />
-              </Link>
-            ))}
-          </nav>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="sticky top-0 z-20 flex h-[var(--topbar-h)] shrink-0 items-center gap-3 border-b border-line bg-paper/85 px-4 backdrop-blur-md sm:px-6">
+          <button
+            onClick={() => setMobileNav((v) => !v)}
+            aria-label="Menu"
+            className="grid h-9 w-9 place-items-center rounded-md text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink lg:hidden"
+          >
+            {mobileNav ? <X size={18} /> : <Menu size={18} />}
+          </button>
 
           <div className="flex-1" />
 
@@ -127,39 +215,12 @@ export function PortalShell({
               { label: "Sign out", icon: LogOut, onSelect: signOut, danger: true },
             ]}
           />
+        </header>
 
-          <button
-            onClick={() => setNavOpen((v) => !v)}
-            aria-label="Menu"
-            className="grid h-9 w-9 place-items-center rounded-md text-ink-3 transition-colors hover:bg-surface-2 hover:text-ink md:hidden"
-          >
-            {navOpen ? <X size={18} /> : <Menu size={18} />}
-          </button>
-        </div>
-
-        {navOpen ? (
-          <nav className="border-t border-line px-4 py-2 md:hidden">
-            {links.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setNavOpen(false)}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2 py-2 text-[13px] font-medium transition-colors",
-                  item.active ? "bg-surface text-ink" : "text-ink-3",
-                )}
-              >
-                <item.icon size={15} />
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
-      </header>
-
-      <main className="mx-auto w-full max-w-[1200px] px-4 py-7 sm:px-6">
-        <div className="animate-fade-up">{children}</div>
-      </main>
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="mx-auto w-full max-w-[1200px] animate-fade-up">{children}</div>
+        </main>
+      </div>
     </div>
   );
 }

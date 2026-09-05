@@ -11,7 +11,7 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, Progress } from "@/components/ui";
 import { compactMoney, money } from "@/lib/utils";
-import { commissionLabel } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -256,7 +256,7 @@ export default async function PortalHome() {
       </div>
 
       {available.length > 0 ? (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader
             title="Open for affiliates"
             subtitle="Projects you have not taken on yet"

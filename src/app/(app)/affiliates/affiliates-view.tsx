@@ -35,7 +35,8 @@ import {
   Textarea,
 } from "@/components/ui";
 import { InteractionTimeline } from "@/components/interaction-timeline";
-import { CommissionField, commissionLabel } from "@/components/commission-field";
+import { CommissionField } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { accentFor, cn, money, relativeTime } from "@/lib/utils";

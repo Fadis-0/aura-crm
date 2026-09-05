@@ -510,7 +510,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* -------------------------------------------------- project strip */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardHeader
           title="Projects in flight"
           subtitle="Progress against the delivery date"

@@ -40,11 +40,6 @@ export default function LoginPage() {
           <h1 className="text-[40px] leading-[1.08] tracking-tight">
             Every client, project and plan in one calm place.
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-ink-3">
-            A private workspace for the two of you. No seats to buy, no data
-            leaving your own database.
-          </p>
-
           <dl className="mt-9 space-y-3.5 border-t border-line pt-6">
             {MARKS.map((m) => (
               <div key={m.label} className="flex items-baseline gap-4">

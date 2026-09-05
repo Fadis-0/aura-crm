@@ -13,7 +13,8 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/overlays";
 import { Combobox, type ComboOption } from "@/components/combobox";
-import { CommissionField, commissionLabel } from "@/components/commission-field";
+import { CommissionField } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { createPartnerAccount } from "@/app/(app)/affiliates/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";

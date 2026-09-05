@@ -1,4 +1,4 @@
-/** The 58 wilayas, in official order. The code is the number people know. */
+/** The 69 wilayas, in official order. The code is the number people know. */
 export const WILAYAS = [
   "01 — Adrar",
   "02 — Chlef",
@@ -58,6 +58,17 @@ export const WILAYAS = [
   "56 — Djanet",
   "57 — El M'Ghair",
   "58 — El Meniaa",
+  "59 — Aflou",
+  "60 — Barika",
+  "61 — El Kantara",
+  "62 — Bir El Ater",
+  "63 — El Aricha",
+  "64 — Ksar Chellala",
+  "65 — Aïn Oussera",
+  "66 — Messaad",
+  "67 — Ksar El Boukhari",
+  "68 — Bousaâda",
+  "69 — El Abiodh Sidi Cheikh",
 ] as const;
 
 export const WILAYA_OPTIONS = WILAYAS.map((w) => ({ value: w, label: w }));

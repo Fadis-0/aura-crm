@@ -16,7 +16,7 @@ import {
   Select,
 } from "@/components/ui";
 import { WILAYAS, formatRip, isValidRip, normaliseRip } from "@/lib/algeria";
-import { commissionLabel } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import { ThemeToggle } from "@/components/theme";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, LOCALE, type Accent } from "@/lib/utils";

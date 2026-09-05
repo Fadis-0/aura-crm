@@ -23,7 +23,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { LOCALE } from "@/lib/utils";
-import { commissionLabel } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import type { Project, ProjectMarketer } from "@/lib/types";
 
 type Filter = "all" | "mine" | "available";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import {
   DndContext,
   DragOverlay,
@@ -424,18 +425,26 @@ export function Kanban({
         </div>
 
         {/* dnd-kit sizes the overlay to the dragged card; a fixed width here
-            would offset it from the cursor. */}
-        <DragOverlay dropAnimation={null}>
-          {activeTask ? (
-            <TaskCard
-              task={activeTask}
-              profiles={profiles}
-              projects={projects}
-              onOpen={() => {}}
-              floating
-            />
-          ) : null}
-        </DragOverlay>
+            would offset it from the cursor. dnd-kit's DragOverlay does not
+            portal itself, so it renders in place in the tree and the page's
+            entrance-animation ancestor (a CSS transform) hijacks its fixed
+            positioning mid-drag. Portaling it to <body> ourselves fixes it. */}
+        {typeof document !== "undefined"
+          ? createPortal(
+              <DragOverlay dropAnimation={null}>
+                {activeTask ? (
+                  <TaskCard
+                    task={activeTask}
+                    profiles={profiles}
+                    projects={projects}
+                    onOpen={() => {}}
+                    floating
+                  />
+                ) : null}
+              </DragOverlay>,
+              document.body,
+            )
+          : null}
       </DndContext>
 
       <Modal

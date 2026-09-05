@@ -3,7 +3,7 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { LOCALE, money } from "@/lib/utils";
-import { commissionLabel } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import type { Commission, Lead } from "@/lib/types";
 
 export const dynamic = "force-dynamic";

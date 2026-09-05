@@ -5,7 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { ArrowLeft, Check, FolderOpen, Plus, Target } from "lucide-react";
 import { AssetRow } from "@/components/assets/asset-kit";
-import { commissionLabel } from "@/components/commission-field";
+import { commissionLabel } from "@/lib/commission";
 import {
   Badge,
   Button,

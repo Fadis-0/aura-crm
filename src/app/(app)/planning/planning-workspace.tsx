@@ -26,7 +26,6 @@ import {
   Select,
   Textarea,
 } from "@/components/ui";
-import { CreateDialog } from "@/components/create-dialog";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { cn } from "@/lib/utils";
@@ -409,8 +408,12 @@ export function PlanningWorkspace({
   const [boardName, setBoardName] = useState("");
   const [creatingGoal, setCreatingGoal] = useState(false);
   const [creatingTask, setCreatingTask] = useState(false);
+  const [taskTitle, setTaskTitle] = useState("");
 
   const board = boards.find((b) => b.id === boardId) ?? boards[0] ?? null;
+  const firstColumn = columns
+    .filter((c) => c.board_id === board?.id)
+    .sort((a, b) => a.position - b.position)[0];
 
   const openCount = useMemo(
     () => tasks.filter((t) => t.status !== "done").length,
@@ -453,6 +456,30 @@ export function PlanningWorkspace({
     setTasks((t) => t.filter((x) => x.board_id !== id));
     setBoardId((current) => (current === id ? null : current));
     await sb.from("boards").delete().eq("id", id);
+  };
+
+  const createTask = async () => {
+    const title = taskTitle.trim();
+    if (!title || !board) return;
+    if (!firstColumn) {
+      toast.error("This board has no columns yet.");
+      return;
+    }
+    const count = tasks.filter((t) => t.column_id === firstColumn.id).length;
+    const { data, error } = await sb
+      .from("tasks")
+      .insert({
+        title,
+        board_id: board.id,
+        column_id: firstColumn.id,
+        position: count,
+      })
+      .select("*")
+      .single();
+    if (error) return toast.error(error.message);
+    setTasks((rows) => [...rows, data as Task]);
+    setTaskTitle("");
+    setCreatingTask(false);
   };
 
   const toggleTask = async (task: Task) => {
@@ -586,12 +613,31 @@ export function PlanningWorkspace({
         />
       ) : null}
 
-      <CreateDialog
+      <Modal
         open={creatingTask}
         onClose={() => setCreatingTask(false)}
-        only="task"
-        onCreated={(row) => setTasks((rows) => [row as unknown as Task, ...rows])}
-      />
+        title="New task"
+        description={board ? `Added to ${firstColumn?.name ?? "the first column"} on ${board.name}.` : undefined}
+        width="sm"
+        footer={
+          <>
+            <Button onClick={() => setCreatingTask(false)}>Cancel</Button>
+            <Button variant="primary" onClick={createTask}>
+              Create task
+            </Button>
+          </>
+        }
+      >
+        <Field label="Task" required>
+          <Input
+            autoFocus
+            value={taskTitle}
+            onChange={(e) => setTaskTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && createTask()}
+            placeholder="What needs doing?"
+          />
+        </Field>
+      </Modal>
 
       <Modal
         open={creatingBoard}
