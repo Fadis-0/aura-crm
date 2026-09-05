@@ -509,7 +509,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* -------------------------------------------------- project strip */}
-      <Card className="overflow-hidden">
+      <Card>
         <CardHeader
           title="Projects in flight"
           subtitle="Progress against the delivery date"
@@ -531,14 +531,14 @@ export default async function DashboardPage() {
             />
           </div>
         ) : (
-          <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
             {activeProjects.slice(0, 6).map((p) => {
               const client = clients.find((c) => c.id === p.client_id);
               return (
                 <Link
                   key={p.id}
                   href={`/projects/${p.id}`}
-                  className="bg-surface p-4 transition-colors hover:bg-surface-2"
+                  className="rounded-lg border border-line bg-surface p-3.5 transition-colors hover:border-line-2 hover:bg-surface-2"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">

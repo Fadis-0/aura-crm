@@ -255,7 +255,7 @@ export default async function PortalHome() {
       </div>
 
       {available.length > 0 ? (
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader
             title="Open for affiliates"
             subtitle="Projects you have not taken on yet"
@@ -268,12 +268,12 @@ export default async function PortalHome() {
               </Link>
             }
           />
-          <div className="grid gap-px bg-line sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-3">
             {available.slice(0, 6).map((p) => (
               <Link
                 key={p.id}
                 href={`/portal/projects/${p.id}`}
-                className="bg-surface p-4 transition-colors hover:bg-surface-2"
+                className="rounded-lg border border-line bg-surface p-3.5 transition-colors hover:border-line-2 hover:bg-surface-2"
               >
                 <div className="flex items-start justify-between gap-3">
                   <p className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">
