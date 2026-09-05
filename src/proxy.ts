@@ -3,19 +3,10 @@ import { NextResponse, type NextRequest } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/auth"];
 
-/** The admin app. Marketers are bounced to the portal. */
-const ADMIN_PATHS = [
-  "/pipeline",
-  "/clients",
-  "/affiliates",
-  "/invoices",
-  "/projects",
-  "/planning",
-  "/notes",
-  "/docs",
-  "/calendar",
-  "/chat",
-];
+/** What a marketer is allowed to reach. Everything else is the admin app.
+ *  An allowlist, so a route added later is protected by default rather than
+ *  needing to be remembered here. */
+const MARKETER_PATHS = ["/portal"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -57,12 +48,14 @@ export async function proxy(request: NextRequest) {
   // Signed in. One profile read decides which half of the app they get.
   const { data: profile } = await supabase
     .from("profiles")
-    .select("role")
+    .select("role, status")
     .eq("id", user.id)
     .maybeSingle();
 
   const role = (profile?.role as string | undefined) ?? "marketer";
-  const isAdmin = role === "owner" || role === "partner";
+  const status = (profile?.status as string | undefined) ?? "pending";
+  // Same rule as lib/auth.ts: a suspended owner is not an admin.
+  const isAdmin = (role === "owner" || role === "partner") && status === "active";
   const home = isAdmin ? "/" : "/portal";
 
   if (isPublic) {
@@ -73,12 +66,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (!isAdmin) {
-    const wantsAdmin =
-      path === "/" ||
-      path === "/settings" ||
-      ADMIN_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
+    const allowed = MARKETER_PATHS.some(
+      (p) => path === p || path.startsWith(`${p}/`),
+    );
 
-    if (wantsAdmin) {
+    if (!allowed) {
       const redirect = request.nextUrl.clone();
       redirect.pathname = "/portal";
       redirect.search = "";

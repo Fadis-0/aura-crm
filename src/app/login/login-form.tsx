@@ -11,7 +11,10 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/";
+  // Only ever bounce to a path on this site. An absolute or protocol-relative
+  // value here would make the login page an open redirect.
+  const raw = params.get("next") || "/";
+  const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

@@ -1,7 +1,7 @@
 import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PortalLeads } from "./portal-leads";
-import type { Lead, Project, ProjectPlan } from "@/lib/types";
+import type { Lead, PortalProject, ProjectPlan } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "My leads" };
@@ -18,7 +18,7 @@ export default async function PortalLeadsPage() {
           .eq("affiliate_id", affiliate.id)
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
-    sb.from("projects").select("*").eq("open_for_affiliates", true).order("name"),
+    sb.from("projects_public").select("*").order("name"),
     sb.from("project_plans").select("*").order("position"),
   ]);
 
@@ -27,7 +27,7 @@ export default async function PortalLeadsPage() {
       initialLeads={(leadsRes.data ?? []) as Lead[]}
       affiliateId={affiliate?.id ?? null}
       affiliate={affiliate}
-      projects={(projectsRes.data ?? []) as Project[]}
+      projects={(projectsRes.data ?? []) as PortalProject[]}
       plans={(plansRes.data ?? []) as ProjectPlan[]}
     />
   );

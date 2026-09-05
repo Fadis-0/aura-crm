@@ -98,7 +98,10 @@ async function ensureUser(email, password, fullName, role, accent) {
 
   await db
     .from("profiles")
-    .upsert({ id, full_name: fullName, email, role, accent }, { onConflict: "id" });
+    .upsert(
+      { id, full_name: fullName, email, role, accent, status: "active" },
+      { onConflict: "id" },
+    );
 
   return id;
 }

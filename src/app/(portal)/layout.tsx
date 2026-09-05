@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { PortalShell } from "@/components/portal/portal-shell";
 import { AccountGate } from "@/components/portal/account-gate";
+import { PasswordGate } from "@/components/portal/password-gate";
 import { SetupNotice } from "@/components/setup-notice";
 import { getSession } from "@/lib/auth";
 import { supabaseServer } from "@/lib/supabase/server";
@@ -22,6 +23,11 @@ export default async function PortalLayout({
   // Admins may look around the portal; marketers must be approved first.
   if (!session.isAdmin && session.profile.status !== "active") {
     return <AccountGate profile={session.profile} />;
+  }
+
+  // An admin picked their password, so nothing else loads until it is theirs.
+  if (!session.isAdmin && session.profile.must_change_password) {
+    return <PasswordGate profile={session.profile} />;
   }
 
   const sb = await supabaseServer();

@@ -4,7 +4,7 @@ import { supabaseServer } from "@/lib/supabase/server";
 import { PortalProjectDetail } from "./portal-project-detail";
 import type {
   Lead,
-  Project,
+  PortalProject,
   ProjectAsset,
   ProjectMarketer,
   ProjectPlan,
@@ -22,7 +22,7 @@ export default async function PortalProjectPage({
   const sb = await supabaseServer();
 
   const { data: project } = await sb
-    .from("projects")
+    .from("projects_public")
     .select("*")
     .eq("id", id)
     .maybeSingle();
@@ -48,7 +48,7 @@ export default async function PortalProjectPage({
 
   return (
     <PortalProjectDetail
-      project={project as Project}
+      project={project as PortalProject}
       assets={(assetsRes.data ?? []) as ProjectAsset[]}
       initialMembership={(membershipRes.data as ProjectMarketer | null) ?? null}
       affiliateId={affiliate?.id ?? null}

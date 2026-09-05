@@ -46,7 +46,12 @@ if (error) {
 
 await admin
   .from("profiles")
-  .update({ full_name: fullName ?? email.split("@")[0], role, email })
+  .update({
+    full_name: fullName ?? email.split("@")[0],
+    role,
+    email,
+    status: "active",
+  })
   .eq("id", data.user.id);
 
 console.log(`\n  Created ${email} as ${role}. They can sign in now.\n`);

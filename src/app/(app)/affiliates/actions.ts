@@ -90,6 +90,13 @@ export async function createPartnerAccount(
     .select("id")
     .single();
 
+  // An admin adding someone is the approval, so the account is ready to use.
+  // But the admin picked the password, so it has to be replaced on first use.
+  await admin
+    .from("profiles")
+    .update({ status: "active", must_change_password: true })
+    .eq("id", data.user.id);
+
   revalidatePath("/affiliates");
 
   return { ok: true, affiliateId: affiliate?.id ?? "" };

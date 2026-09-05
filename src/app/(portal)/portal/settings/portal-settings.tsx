@@ -80,13 +80,13 @@ export function PortalSettings({
     }
 
     setSavingPayout(true);
-    const { error } = await sb
-      .from("affiliates")
-      .update({
-        ccp_rip: rip.trim() ? normaliseRip(rip) : null,
-        ccp_holder: holder.trim() || null,
-      })
-      .eq("id", affiliate.id);
+    // Goes through a function rather than a table write: a marketer has no
+    // update rights on their affiliate row, and should not get them just to
+    // save a bank number.
+    const { error } = await sb.rpc("set_my_payout", {
+      rip: rip.trim() ? normaliseRip(rip) : null,
+      holder: holder.trim() || null,
+    });
     setSavingPayout(false);
     if (error) return toast.error(error.message);
     toast.success("Payout details saved");

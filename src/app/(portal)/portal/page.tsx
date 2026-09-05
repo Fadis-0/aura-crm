@@ -18,7 +18,7 @@ import {
   STAGE_LABEL,
   type Commission,
   type Lead,
-  type Project,
+  type PortalProject,
   type ProjectMarketer,
   type ProjectPlan,
 } from "@/lib/types";
@@ -39,7 +39,7 @@ export default async function PortalHome() {
   const sb = await supabaseServer();
 
   const [projectsRes, joinedRes, leadsRes, commissionsRes, plansRes] = await Promise.all([
-    sb.from("projects").select("*").eq("open_for_affiliates", true),
+    sb.from("projects_public").select("*"),
     affiliate
       ? sb.from("project_marketers").select("*").eq("affiliate_id", affiliate.id)
       : Promise.resolve({ data: [] }),
@@ -52,7 +52,7 @@ export default async function PortalHome() {
     sb.from("project_plans").select("*").order("position"),
   ]);
 
-  const projects = (projectsRes.data ?? []) as Project[];
+  const projects = (projectsRes.data ?? []) as PortalProject[];
   const plans = (plansRes.data ?? []) as ProjectPlan[];
   const payoutFor = (projectId: string) =>
     plansPayoutRange(plans.filter((pl) => pl.project_id === projectId));

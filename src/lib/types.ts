@@ -26,6 +26,8 @@ export type Profile = {
   approved_at: string | null;
   approved_by: ID | null;
   last_seen_at: string | null;
+  /** Set when an admin chose the password, cleared once they replace it. */
+  must_change_password: boolean;
   created_at: string;
 };
 
@@ -194,6 +196,24 @@ export type Project = {
   created_at: string;
   updated_at: string;
 };
+
+/** What the portal sees of a project. Backed by the projects_public view,
+ *  which withholds budget, spend, ownership and internal tags. */
+export type PortalProject = Pick<
+  Project,
+  | "id"
+  | "name"
+  | "code"
+  | "description"
+  | "accent"
+  | "status"
+  | "due_date"
+  | "open_for_affiliates"
+  | "affiliate_brief"
+  | "affiliate_payout_note"
+  | "created_at"
+  | "updated_at"
+>;
 
 export const ASSET_KINDS = ["file", "doc", "image", "video", "link"] as const;
 export type AssetKind = (typeof ASSET_KINDS)[number];

@@ -8,7 +8,7 @@ import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { planPayout } from "@/lib/commission";
 import { money } from "@/lib/utils";
-import type { Lead, Project, ProjectPlan } from "@/lib/types";
+import type { Lead, PortalProject, ProjectPlan } from "@/lib/types";
 
 /**
  * The marketer's own lead form. Deliberately smaller than the admin one: no
@@ -28,7 +28,7 @@ export function CreateLeadDialog({
   onClose: () => void;
   affiliateId: string | null;
   onCreated?: (lead: Lead) => void;
-  projects?: Project[];
+  projects?: PortalProject[];
   plans?: ProjectPlan[];
   /** Set when the form is opened from inside one project. */
   lockedProjectId?: string | null;
@@ -136,7 +136,7 @@ export function CreateLeadDialog({
 
         <div className="grid gap-3 sm:grid-cols-2">
           {lockedProjectId ? null : (
-            <Field label="Project" hint="what they'd be buying">
+            <Field label="PortalProject" hint="what they'd be buying">
               <Select
                 value={form.project_id ?? ""}
                 onChange={(e) => {

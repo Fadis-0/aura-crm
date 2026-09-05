@@ -40,7 +40,7 @@ import {
   type Affiliate,
   type Lead,
   type LeadStage,
-  type Project,
+  type PortalProject,
   type ProjectPlan,
 } from "@/lib/types";
 
@@ -171,7 +171,7 @@ export function PortalLeads({
   initialLeads: Lead[];
   affiliateId: string | null;
   affiliate: Affiliate | null;
-  projects: Project[];
+  projects: PortalProject[];
   plans: ProjectPlan[];
 }) {
   const sb = supabaseBrowser();
@@ -464,7 +464,7 @@ export function PortalLeads({
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Project" hint="what they'd be buying">
+              <Field label="PortalProject" hint="what they'd be buying">
                 <Select
                   value={draft.project_id ?? ""}
                   onChange={(e) => {

@@ -24,7 +24,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { LOCALE } from "@/lib/utils";
 import { plansPayoutRange } from "@/lib/commission";
-import type { Project, ProjectMarketer, ProjectPlan } from "@/lib/types";
+import type { PortalProject, ProjectMarketer, ProjectPlan } from "@/lib/types";
 
 type Filter = "all" | "mine" | "available";
 
@@ -35,7 +35,7 @@ export function PortalProjects({
   affiliateId,
   assetCounts,
 }: {
-  projects: Project[];
+  projects: PortalProject[];
   initialJoined: ProjectMarketer[];
   plans: ProjectPlan[];
   affiliateId: string | null;
@@ -80,7 +80,7 @@ export function PortalProjects({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projects, joined, filter, query]);
 
-  const join = async (project: Project) => {
+  const join = async (project: PortalProject) => {
     if (!affiliateId) {
       toast.error("Something is off with your account. Please get in touch.");
       return;
@@ -106,7 +106,7 @@ export function PortalProjects({
     toast.success(`Added ${project.name} to your projects`);
   };
 
-  const leave = async (project: Project) => {
+  const leave = async (project: PortalProject) => {
     if (!affiliateId) return;
     setBusy(project.id);
 

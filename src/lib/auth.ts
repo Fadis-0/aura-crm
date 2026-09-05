@@ -41,7 +41,7 @@ export async function getSession(): Promise<Session | null> {
     email: user.email ?? "",
     profile,
     isAdmin: isAdminRole(profile.role) && profile.status === "active",
-    isMarketer: profile.role === "marketer",
+    isMarketer: profile.role === "marketer" && profile.status === "active",
   };
 }
 

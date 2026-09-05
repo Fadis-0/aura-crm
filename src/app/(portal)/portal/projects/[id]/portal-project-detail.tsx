@@ -22,7 +22,7 @@ import {
   STAGE_ACCENT,
   STAGE_LABEL,
   type Lead,
-  type Project,
+  type PortalProject,
   type ProjectAsset,
   type ProjectMarketer,
   type ProjectPlan,
@@ -36,7 +36,7 @@ export function PortalProjectDetail({
   leads,
   plans,
 }: {
-  project: Project;
+  project: PortalProject;
   assets: ProjectAsset[];
   initialMembership: ProjectMarketer | null;
   affiliateId: string | null;
