@@ -120,7 +120,7 @@ export function Notifications({
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-50 mt-1.5 w-[340px] overflow-hidden rounded-lg border border-line bg-surface shadow-float animate-pop-in">
+        <div className="absolute right-0 z-50 mt-1.5 w-[min(340px,calc(100vw-2rem))] overflow-hidden rounded-lg border border-line bg-surface shadow-float animate-pop-in">
           <div className="flex items-center gap-2 border-b border-line px-3.5 py-2.5">
             <h3 className="text-[13px]">Notifications</h3>
             {unread > 0 ? (

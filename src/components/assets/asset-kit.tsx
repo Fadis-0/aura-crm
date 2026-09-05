@@ -37,6 +37,12 @@ export function formatBytes(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** The name the file should land under, from the stored path when we have it. */
+function fileNameFor(asset: ProjectAsset) {
+  const fromPath = asset.storage_path?.split("/").pop();
+  return fromPath && fromPath.includes(".") ? fromPath : asset.title;
+}
+
 /**
  * Opens an asset: a link goes straight out, a stored file gets a short-lived
  * signed URL. The bucket is private, so there is no public URL to leak.
@@ -46,22 +52,37 @@ export function useAssetOpener() {
 
   const open = async (asset: ProjectAsset) => {
     if (asset.url) {
+      // Still inside the tap, so a popup is allowed here.
       window.open(asset.url, "_blank", "noopener,noreferrer");
       return;
     }
     if (!asset.storage_path) return;
 
+    const name = fileNameFor(asset);
+
     setPending(asset.id);
     const { data, error } = await supabaseBrowser()
       .storage.from(ASSET_BUCKET)
-      .createSignedUrl(asset.storage_path, 60 * 5);
+      // Asking for it as an attachment is what makes the navigation below a
+      // download rather than the browser leaving the app.
+      .createSignedUrl(asset.storage_path, 60 * 5, { download: name });
     setPending(null);
 
     if (error || !data) {
       toast.error(error?.message ?? "Could not open that file.");
       return;
     }
-    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+
+    // The signed URL only exists after that await, by which point the tap is
+    // over — mobile Safari and Chrome block window.open outside a gesture, so
+    // the old popup silently did nothing. Drive an anchor instead.
+    const a = document.createElement("a");
+    a.href = data.signedUrl;
+    a.rel = "noopener";
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   };
 
   return { open, pending };

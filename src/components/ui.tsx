@@ -375,7 +375,9 @@ export function PageHeader({
           <p className="mt-1 max-w-2xl text-[13.5px] text-ink-3">{description}</p>
         ) : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
     </header>
   );
 }

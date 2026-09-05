@@ -11,7 +11,7 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, Progress } from "@/components/ui";
 import { compactMoney, money } from "@/lib/utils";
-import { commissionLabel } from "@/lib/commission";
+import { plansPayoutRange } from "@/lib/commission";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -20,6 +20,7 @@ import {
   type Lead,
   type Project,
   type ProjectMarketer,
+  type ProjectPlan,
 } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,7 @@ export default async function PortalHome() {
   const { profile, affiliate } = await getPortalContext();
   const sb = await supabaseServer();
 
-  const [projectsRes, joinedRes, leadsRes, commissionsRes] = await Promise.all([
+  const [projectsRes, joinedRes, leadsRes, commissionsRes, plansRes] = await Promise.all([
     sb.from("projects").select("*").eq("open_for_affiliates", true),
     affiliate
       ? sb.from("project_marketers").select("*").eq("affiliate_id", affiliate.id)
@@ -48,9 +49,13 @@ export default async function PortalHome() {
     affiliate
       ? sb.from("commissions").select("*").eq("affiliate_id", affiliate.id)
       : Promise.resolve({ data: [] }),
+    sb.from("project_plans").select("*").order("position"),
   ]);
 
   const projects = (projectsRes.data ?? []) as Project[];
+  const plans = (plansRes.data ?? []) as ProjectPlan[];
+  const payoutFor = (projectId: string) =>
+    plansPayoutRange(plans.filter((pl) => pl.project_id === projectId));
   const joined = (joinedRes.data ?? []) as ProjectMarketer[];
   const leads = (leadsRes.data ?? []) as Lead[];
   const commissions = (commissionsRes.data ?? []) as Commission[];
@@ -196,14 +201,8 @@ export default async function PortalHome() {
                           {p.affiliate_brief ?? "No brief yet"}
                         </p>
                       </div>
-                      {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
-                        <Badge accent="sage">
-                          {commissionLabel(
-                            p.affiliate_commission_type,
-                            p.affiliate_commission_amount,
-                            p.affiliate_commission_rate,
-                          )}
-                        </Badge>
+                      {payoutFor(p.id) ? (
+                        <Badge accent="sage">{payoutFor(p.id)}</Badge>
                       ) : null}
                       <span className="hidden shrink-0 text-[11.5px] text-ink-4 sm:block">
                         {mine} won
@@ -280,14 +279,8 @@ export default async function PortalHome() {
                   <p className="min-w-0 flex-1 truncate text-[13.5px] font-medium text-ink">
                     {p.name}
                   </p>
-                  {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
-                    <Badge accent="sage">
-                      {commissionLabel(
-                        p.affiliate_commission_type,
-                        p.affiliate_commission_amount,
-                        p.affiliate_commission_rate,
-                      )}
-                    </Badge>
+                  {payoutFor(p.id) ? (
+                    <Badge accent="sage">{payoutFor(p.id)}</Badge>
                   ) : null}
                 </div>
                 {p.affiliate_brief ? (

@@ -207,6 +207,8 @@ export function CalendarView({
             </div>
           </div>
 
+          <div className="overflow-x-auto">
+          <div className="min-w-[680px]">
           <div className="grid grid-cols-7 border-b border-line bg-surface-2/60">
             {WEEKDAYS.map((d) => (
               <div
@@ -283,9 +285,11 @@ export function CalendarView({
               );
             })}
           </div>
+          </div>
+          </div>
 
           <p className="border-t border-line px-4 py-2 text-[11.5px] text-ink-4">
-            Double-click a day to add an event.
+            Double-click a day to add an event, or swipe the grid sideways.
           </p>
         </Card>
       ) : upcoming.length === 0 ? (

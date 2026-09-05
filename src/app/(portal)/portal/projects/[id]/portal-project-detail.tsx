@@ -3,9 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
-import { ArrowLeft, Check, FolderOpen, Plus, Target } from "lucide-react";
+import { ArrowLeft, Check, Coins, FolderOpen, Plus, Target } from "lucide-react";
 import { AssetRow } from "@/components/assets/asset-kit";
-import { commissionLabel } from "@/lib/commission";
+import { planPayout, plansPayoutRange } from "@/lib/commission";
 import {
   Badge,
   Button,
@@ -25,6 +25,7 @@ import {
   type Project,
   type ProjectAsset,
   type ProjectMarketer,
+  type ProjectPlan,
 } from "@/lib/types";
 
 export function PortalProjectDetail({
@@ -33,12 +34,14 @@ export function PortalProjectDetail({
   initialMembership,
   affiliateId,
   leads,
+  plans,
 }: {
   project: Project;
   assets: ProjectAsset[];
   initialMembership: ProjectMarketer | null;
   affiliateId: string | null;
   leads: Lead[];
+  plans: ProjectPlan[];
 }) {
   const sb = supabaseBrowser();
 
@@ -48,6 +51,7 @@ export function PortalProjectDetail({
   const [creating, setCreating] = useState(false);
 
   const working = membership?.status === "active";
+  const payoutRange = plansPayoutRange(plans);
   const won = myLeads.filter((l) => l.stage === "won").length;
 
   const toggle = async () => {
@@ -127,14 +131,7 @@ export function PortalProjectDetail({
         {[
           {
             label: "You earn",
-            value:
-              project.affiliate_commission_amount || project.affiliate_commission_rate
-                ? commissionLabel(
-                    project.affiliate_commission_type,
-                    project.affiliate_commission_amount,
-                    project.affiliate_commission_rate,
-                  )
-                : "To be confirmed",
+            value: payoutRange ?? "To be confirmed",
             color: "var(--clay)",
           },
           {
@@ -170,6 +167,43 @@ export function PortalProjectDetail({
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4">
+          <Card>
+            <CardHeader
+              title="What you earn"
+              subtitle="Your cut on each way a client can buy"
+            />
+            {plans.length === 0 ? (
+              <div className="p-4">
+                <EmptyState
+                  icon={<Coins size={19} />}
+                  title="No plans published yet"
+                  description="The team has not set the pricing for this project."
+                  className="py-8"
+                />
+              </div>
+            ) : (
+              <ul className="divide-y divide-line">
+                {plans.map((pl) => (
+                  <li
+                    key={pl.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-3"
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-[13.5px] font-medium text-ink">
+                        {pl.name}
+                      </p>
+                      <p className="mt-0.5 text-[11.5px] text-ink-4">
+                        {money(pl.price)}
+                        {pl.kind === "subscription" ? " / month" : " one-time"}
+                      </p>
+                    </div>
+                    <Badge accent="clay">{money(planPayout(pl))} to you</Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Card>
+
           <Card>
             <CardHeader
               title="Files and documents"
@@ -285,6 +319,8 @@ export function PortalProjectDetail({
         open={creating}
         onClose={() => setCreating(false)}
         affiliateId={affiliateId}
+        plans={plans}
+        lockedProjectId={project.id}
         onCreated={(lead) => setMyLeads((rows) => [lead, ...rows])}
       />
     </>

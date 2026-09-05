@@ -13,14 +13,13 @@ import {
 } from "lucide-react";
 import { Modal } from "@/components/overlays";
 import { Combobox, type ComboOption } from "@/components/combobox";
-import { CommissionField } from "@/components/commission-field";
-import { commissionLabel } from "@/lib/commission";
+import { planPayout } from "@/lib/commission";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { createPartnerAccount } from "@/app/(app)/affiliates/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { WILAYAS } from "@/lib/algeria";
-import { cn } from "@/lib/utils";
-import type { CommissionType } from "@/lib/types";
+import { cn, money } from "@/lib/utils";
+import type { ProjectPlan } from "@/lib/types";
 
 export type CreateKind =
   | "lead"
@@ -78,10 +77,10 @@ export function CreateDialog({
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
-  const [commissionType, setCommissionType] = useState<CommissionType>("fixed");
   const [affiliates, setAffiliates] = useState<ComboOption[]>([]);
   const [clients, setClients] = useState<ComboOption[]>([]);
   const [projects, setProjects] = useState<ComboOption[]>([]);
+  const [plans, setPlans] = useState<ProjectPlan[]>([]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -91,25 +90,19 @@ export function CreateDialog({
     let cancelled = false;
 
     (async () => {
-      const [aff, cli, prj] = await Promise.all([
+      const [aff, cli, prj, pln] = await Promise.all([
         sb
           .from("affiliates")
-          .select("id,name,company,commission_type,commission_amount,commission_rate,accent")
+          .select("id,name,company,accent")
           .order("name"),
         sb.from("clients").select("id,name,company,accent").order("name"),
         sb.from("projects").select("id,name,code,accent").eq("archived", false).order("name"),
+        sb.from("project_plans").select("*").order("position"),
       ]);
       if (cancelled) return;
+      setPlans((pln.data ?? []) as ProjectPlan[]);
 
-      type A = {
-        id: string;
-        name: string;
-        company: string | null;
-        commission_type: CommissionType;
-        commission_amount: number;
-        commission_rate: number;
-        accent: string;
-      };
+      type A = { id: string; name: string; company: string | null; accent: string };
       type C = { id: string; name: string; company: string | null; accent: string };
       type P = { id: string; name: string; code: string | null; accent: string };
 
@@ -117,12 +110,7 @@ export function CreateDialog({
         ((aff.data ?? []) as A[]).map((a) => ({
           value: a.id,
           label: a.name,
-          hint: [
-            a.company,
-            `${commissionLabel(a.commission_type, a.commission_amount, a.commission_rate)} per deal`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          hint: a.company ?? undefined,
           accent: a.accent,
         })),
       );
@@ -152,7 +140,6 @@ export function CreateDialog({
 
   const close = () => {
     setForm({});
-    setCommissionType("fixed");
     setKind(only ?? "lead");
     onClose();
   };
@@ -182,9 +169,6 @@ export function CreateDialog({
       postalCode: form.postalCode,
       company: form.company,
       notes: form.notes,
-      commissionType,
-      commissionAmount: form.amount ? Number(form.amount) : 0,
-      commissionRate: form.rate ? Number(form.rate) : 0,
       ccpRip: form.ccpRip,
       ccpHolder: form.ccpHolder,
     });
@@ -248,6 +232,8 @@ export function CreateDialog({
                   // Only attribute when the source actually is an affiliate.
                   affiliate_id:
                     (form.source || "direct") === "affiliate" ? form.affiliate || null : null,
+                  project_id: form.project || null,
+                  plan_id: form.plan || null,
                 }
               : kind === "client"
                 ? {
@@ -396,6 +382,38 @@ export function CreateDialog({
               </Field>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Project" hint="what they'd be buying">
+                <Combobox
+                  value={form.project ?? null}
+                  onChange={(v) => {
+                    set("project", v ?? "");
+                    set("plan", "");
+                  }}
+                  options={projects}
+                  placeholder="No project yet"
+                  clearLabel="No project yet"
+                  emptyLabel="No project matches that"
+                />
+              </Field>
+              <Field label="Plan" hint="sets the partner's commission">
+                <Combobox
+                  value={form.plan ?? null}
+                  onChange={(v) => set("plan", v ?? "")}
+                  options={plans
+                    .filter((pl) => pl.project_id === form.project)
+                    .map((pl) => ({
+                      value: pl.id,
+                      label: pl.name,
+                      hint: `${money(pl.price)}${pl.kind === "subscription" ? "/mo" : ""} · ${money(planPayout(pl))} to partner`,
+                    }))}
+                  placeholder={form.project ? "No plan yet" : "Pick a project first"}
+                  clearLabel="No plan yet"
+                  emptyLabel="This project has no plans yet"
+                />
+              </Field>
+            </div>
+
             <Field label="Source">
               <Select value={source} onChange={(e) => set("source", e.target.value)}>
                 <option value="direct">Direct</option>
@@ -508,18 +526,9 @@ export function CreateDialog({
 
             <div className="border-t border-line pt-4">
               <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
-                Terms and payout
+                Payout
               </p>
               <div className="space-y-3">
-                <CommissionField
-                  type={commissionType}
-                  amount={form.amount ? Number(form.amount) : 0}
-                  rate={form.rate ? Number(form.rate) : 0}
-                  onTypeChange={setCommissionType}
-                  onAmountChange={(v) => set("amount", String(v))}
-                  onRateChange={(v) => set("rate", String(v))}
-                />
-
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Field label="CCP RIP" hint="optional">
                     <Input

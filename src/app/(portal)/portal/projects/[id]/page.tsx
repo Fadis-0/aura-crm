@@ -2,7 +2,13 @@ import { notFound } from "next/navigation";
 import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { PortalProjectDetail } from "./portal-project-detail";
-import type { Lead, Project, ProjectAsset, ProjectMarketer } from "@/lib/types";
+import type {
+  Lead,
+  Project,
+  ProjectAsset,
+  ProjectMarketer,
+  ProjectPlan,
+} from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +30,7 @@ export default async function PortalProjectPage({
   // Row-level security already hides projects that are not open to affiliates.
   if (!project) notFound();
 
-  const [assetsRes, membershipRes, leadsRes] = await Promise.all([
+  const [assetsRes, membershipRes, leadsRes, plansRes] = await Promise.all([
     sb.from("project_assets").select("*").eq("project_id", id).order("position"),
     affiliate
       ? sb
@@ -37,6 +43,7 @@ export default async function PortalProjectPage({
     affiliate
       ? sb.from("leads").select("*").eq("affiliate_id", affiliate.id)
       : Promise.resolve({ data: [] }),
+    sb.from("project_plans").select("*").eq("project_id", id).order("position"),
   ]);
 
   return (
@@ -46,6 +53,7 @@ export default async function PortalProjectPage({
       initialMembership={(membershipRes.data as ProjectMarketer | null) ?? null}
       affiliateId={affiliate?.id ?? null}
       leads={(leadsRes.data ?? []) as Lead[]}
+      plans={(plansRes.data ?? []) as ProjectPlan[]}
     />
   );
 }

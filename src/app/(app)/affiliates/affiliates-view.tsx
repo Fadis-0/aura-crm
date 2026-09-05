@@ -35,8 +35,6 @@ import {
   Textarea,
 } from "@/components/ui";
 import { InteractionTimeline } from "@/components/interaction-timeline";
-import { CommissionField } from "@/components/commission-field";
-import { commissionLabel } from "@/lib/commission";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { accentFor, cn, money, relativeTime } from "@/lib/utils";
@@ -47,7 +45,6 @@ import type {
   Affiliate,
   Client,
   Commission,
-  CommissionType,
   Lead,
   Profile,
 } from "@/lib/types";
@@ -235,9 +232,6 @@ export function AffiliatesView({
       email: draft.email || null,
       phone: draft.phone || null,
       status: draft.status,
-      commission_type: draft.commission_type ?? "fixed",
-      commission_amount: Number(draft.commission_amount ?? 0),
-      commission_rate: Number(draft.commission_rate ?? 0),
       ccp_rip: draft.ccp_rip ? normaliseRip(draft.ccp_rip) : null,
       ccp_holder: draft.ccp_holder || null,
       notes: draft.notes || null,
@@ -411,13 +405,9 @@ export function AffiliatesView({
                         ) : (
                           <Badge accent={PARTNER_ACCENT[a.status]}>contact</Badge>
                         )}
-                        <Badge accent="clay">
-                          {commissionLabel(
-                            a.commission_type,
-                            a.commission_amount,
-                            a.commission_rate,
-                          )}
-                        </Badge>
+                        {row.earned > 0 ? (
+                          <Badge accent="clay">{money(row.earned)} earned</Badge>
+                        ) : null}
                       </div>
 
                       <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-[11.5px] text-ink-4">
@@ -548,14 +538,7 @@ export function AffiliatesView({
               <Badge accent={PARTNER_ACCENT[selected.status]} dot>
                 {selected.status}
               </Badge>
-              <span>
-                {commissionLabel(
-                  selected.commission_type,
-                  selected.commission_amount,
-                  selected.commission_rate,
-                )}{" "}
-                per closed deal
-              </span>
+              <span>Paid per project plan</span>
             </span>
           ) : null
         }
@@ -607,15 +590,10 @@ export function AffiliatesView({
               </Select>
             </Field>
 
-            {/* Full width: squeezed into half a row the amount was unreadable. */}
-            <CommissionField
-              type={draft.commission_type ?? "fixed"}
-              amount={draft.commission_amount ?? 0}
-              rate={draft.commission_rate ?? 0}
-              onTypeChange={(t) => set("commission_type", t as CommissionType)}
-              onAmountChange={(v) => set("commission_amount", v)}
-              onRateChange={(v) => set("commission_rate", v)}
-            />
+            <p className="rounded-lg border border-line bg-surface-2 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-ink-3">
+              Commission is set on each project&apos;s payment plans, not here.
+              What this partner earns depends on which plan the client buys.
+            </p>
 
             <section>
               <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">

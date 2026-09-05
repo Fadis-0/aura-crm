@@ -7,6 +7,7 @@ import {
   DragOverlay,
   MeasuringStrategy,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -31,7 +32,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { cn, compactMoney, money, relativeTime } from "@/lib/utils";
-import { commissionFor } from "@/lib/commission";
+import { planPayout } from "@/lib/commission";
 import {
   LEAD_STAGES,
   STAGE_ACCENT,
@@ -39,6 +40,8 @@ import {
   type Affiliate,
   type Lead,
   type LeadStage,
+  type Project,
+  type ProjectPlan,
 } from "@/lib/types";
 
 const BOARD_STAGES = LEAD_STAGES.filter((s) => s !== "lost") as LeadStage[];
@@ -162,10 +165,14 @@ export function PortalLeads({
   initialLeads,
   affiliateId,
   affiliate,
+  projects,
+  plans,
 }: {
   initialLeads: Lead[];
   affiliateId: string | null;
   affiliate: Affiliate | null;
+  projects: Project[];
+  plans: ProjectPlan[];
 }) {
   const sb = supabaseBrowser();
 
@@ -179,27 +186,23 @@ export function PortalLeads({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // On a phone a plain swipe has to scroll the board, so a drag only starts
+    // after a short press-and-hold.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
   );
 
   const open = leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
   const totals = useMemo(() => {
     const wonLeads = leads.filter((l) => l.stage === "won");
 
-    // Each closed deal earns on the partner's own terms, so add them up one by
-    // one rather than applying a single rate to the total.
-    const commission = affiliate
-      ? wonLeads.reduce(
-          (s, l) =>
-            s +
-            commissionFor(
-              affiliate.commission_type,
-              affiliate.commission_amount,
-              affiliate.commission_rate,
-              l.estimated_value ?? 0,
-            ),
-          0,
-        )
-      : 0;
+    // Commission lives on the plan the client bought, so each won lead pays
+    // out on its own terms. A lead with no plan picked yet earns nothing.
+    const commission = wonLeads.reduce((s, l) => {
+      const plan = plans.find((pl) => pl.id === l.plan_id);
+      return s + (plan ? planPayout(plan) : 0);
+    }, 0);
 
     return {
       open: open.reduce((s, l) => s + (l.estimated_value ?? 0), 0),
@@ -207,7 +210,7 @@ export function PortalLeads({
       wonCount: wonLeads.length,
       commission,
     };
-  }, [leads, open, affiliate]);
+  }, [leads, open, plans]);
 
   const onDragEnd = async (e: DragEndEvent) => {
     setActiveId(null);
@@ -241,6 +244,8 @@ export function PortalLeads({
       stage: draft.stage,
       temperature: draft.temperature,
       estimated_value: Number(draft.estimated_value ?? 0),
+      project_id: draft.project_id || null,
+      plan_id: draft.plan_id || null,
       notes: draft.notes || null,
     };
     const { error } = await sb.from("leads").update(patch).eq("id", selected.id);
@@ -458,6 +463,43 @@ export function PortalLeads({
               </Field>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Project" hint="what they'd be buying">
+                <Select
+                  value={draft.project_id ?? ""}
+                  onChange={(e) => {
+                    set("project_id", e.target.value || null);
+                    set("plan_id", null);
+                  }}
+                >
+                  <option value="">Not decided yet</option>
+                  {projects.map((pr) => (
+                    <option key={pr.id} value={pr.id}>
+                      {pr.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field label="Plan" hint="sets what you earn">
+                <Select
+                  value={draft.plan_id ?? ""}
+                  onChange={(e) => set("plan_id", e.target.value || null)}
+                  disabled={!draft.project_id}
+                >
+                  <option value="">
+                    {draft.project_id ? "Not decided yet" : "Pick a project first"}
+                  </option>
+                  {plans
+                    .filter((pl) => pl.project_id === draft.project_id)
+                    .map((pl) => (
+                      <option key={pl.id} value={pl.id}>
+                        {pl.name} — {money(planPayout(pl))} to you
+                      </option>
+                    ))}
+                </Select>
+              </Field>
+            </div>
+
             <Field label="Notes">
               <Textarea
                 rows={5}
@@ -474,6 +516,8 @@ export function PortalLeads({
         open={creating}
         onClose={() => setCreating(false)}
         affiliateId={affiliateId}
+        projects={projects}
+        plans={plans}
         onCreated={(lead) => setLeads((rows) => [lead, ...rows])}
       />
 

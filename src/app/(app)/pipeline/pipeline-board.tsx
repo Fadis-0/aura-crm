@@ -8,6 +8,7 @@ import {
   DragOverlay,
   MeasuringStrategy,
   PointerSensor,
+  TouchSensor,
   useDroppable,
   useSensor,
   useSensors,
@@ -54,6 +55,8 @@ import {
   type Affiliate,
   type Lead,
   type LeadStage,
+  type Project,
+  type ProjectPlan,
 } from "@/lib/types";
 
 const BOARD_STAGES = LEAD_STAGES.filter((s) => s !== "lost") as LeadStage[];
@@ -205,9 +208,13 @@ function Column({
 export function PipelineBoard({
   initialLeads,
   affiliates,
+  projects,
+  plans,
 }: {
   initialLeads: Lead[];
   affiliates: Affiliate[];
+  projects: Project[];
+  plans: ProjectPlan[];
 }) {
   const router = useRouter();
   const sb = supabaseBrowser();
@@ -222,6 +229,11 @@ export function PipelineBoard({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // On a phone a plain swipe has to scroll the board, so a drag only starts
+    // after a short press-and-hold.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
   );
 
   const open = leads.filter((l) => l.stage !== "won" && l.stage !== "lost");
@@ -280,6 +292,8 @@ export function PipelineBoard({
       temperature: draft.temperature,
       source: draft.source,
       affiliate_id: draft.affiliate_id || null,
+      project_id: draft.project_id || null,
+      plan_id: draft.plan_id || null,
       estimated_value: Number(draft.estimated_value ?? 0),
       probability: Number(draft.probability ?? 0),
       expected_close: draft.expected_close || null,
@@ -328,24 +342,30 @@ export function PipelineBoard({
       .update({ stage: "won", converted_client_id: data.id })
       .eq("id", selected.id);
 
-    // Book what the partner is owed, on their own terms.
+    // Book what the partner is owed, on the plan's terms — commission is
+    // set per project plan now, not on the affiliate's own record.
     if (selected.affiliate_id) {
-      const affiliate = affiliates.find((a) => a.id === selected.affiliate_id);
-      if (affiliate) {
+      const plan = plans.find((p) => p.id === selected.plan_id);
+      if (plan) {
         await sb.from("commissions").insert({
-          affiliate_id: affiliate.id,
+          affiliate_id: selected.affiliate_id,
+          plan_id: plan.id,
           lead_id: selected.id,
           client_id: data.id,
-          commission_type: affiliate.commission_type,
-          rate: affiliate.commission_type === "percent" ? affiliate.commission_rate : null,
+          commission_type: plan.commission_type,
+          rate: plan.commission_type === "percent" ? plan.commission_rate : null,
           amount: commissionFor(
-            affiliate.commission_type,
-            affiliate.commission_amount,
-            affiliate.commission_rate,
-            selected.estimated_value ?? 0,
+            plan.commission_type,
+            plan.commission_amount,
+            plan.commission_rate,
+            plan.price || selected.estimated_value || 0,
           ),
-          note: `Closed ${selected.name}`,
+          note: `Closed ${selected.name} — ${plan.name}`,
         });
+      } else {
+        toast.error(
+          "No plan selected — pick which project plan they bought so the commission is booked.",
+        );
       }
     }
 
@@ -368,6 +388,7 @@ export function PipelineBoard({
   const activeLead = leads.find((l) => l.id === activeId);
   const set = <K extends keyof Lead>(k: K, v: Lead[K]) =>
     setDraft((d) => ({ ...d, [k]: v }));
+  const leadPlans = plans.filter((p) => p.project_id === draft.project_id);
 
   return (
     <>
@@ -585,12 +606,7 @@ export function PipelineBoard({
                 options={affiliates.map((a) => ({
                   value: a.id,
                   label: a.name,
-                  hint: [
-                    a.company,
-                    `${commissionLabel(a.commission_type, a.commission_amount, a.commission_rate)} per deal`,
-                  ]
-                    .filter(Boolean)
-                    .join(" · "),
+                  hint: a.company ?? undefined,
                   accent: a.accent,
                 }))}
                 placeholder="Nobody"
@@ -598,6 +614,40 @@ export function PipelineBoard({
                 emptyLabel="No affiliate matches that"
               />
             </Field>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Project" hint="what they'd be buying">
+                <Combobox
+                  value={draft.project_id ?? null}
+                  onChange={(v) => {
+                    set("project_id", v);
+                    set("plan_id", null);
+                  }}
+                  options={projects.map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                    accent: p.accent,
+                  }))}
+                  placeholder="No project yet"
+                  clearLabel="No project yet"
+                  emptyLabel="No project matches that"
+                />
+              </Field>
+              <Field label="Plan" hint="sets the partner's commission">
+                <Combobox
+                  value={draft.plan_id ?? null}
+                  onChange={(v) => set("plan_id", v)}
+                  options={leadPlans.map((p) => ({
+                    value: p.id,
+                    label: p.name,
+                    hint: `${money(p.price)}${p.kind === "subscription" ? "/mo" : ""} · ${commissionLabel(p.commission_type, p.commission_amount, p.commission_rate)} to partner`,
+                  }))}
+                  placeholder={draft.project_id ? "No plan yet" : "Pick a project first"}
+                  clearLabel="No plan yet"
+                  emptyLabel="This project has no plans yet"
+                />
+              </Field>
+            </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               <Field label="Value" hint="DA">

@@ -7,6 +7,7 @@ import {
   DragOverlay,
   MeasuringStrategy,
   PointerSensor,
+  TouchSensor,
   useDraggable,
   useDroppable,
   useSensor,
@@ -295,6 +296,11 @@ export function Kanban({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    // On a phone a plain swipe has to scroll the board, so a drag only starts
+    // after a short press-and-hold.
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 180, tolerance: 6 },
+    }),
   );
 
   const boardColumns = columns.filter((c) => c.board_id === board.id);
@@ -478,7 +484,7 @@ export function Kanban({
             className="w-full rounded-md border border-line bg-surface px-3 py-2 text-[13px] leading-relaxed text-ink outline-none placeholder:text-ink-4 focus:border-[var(--clay)]"
           />
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className="block">
               <span className="mb-1.5 block text-[12px] font-medium text-ink-2">Priority</span>
               <Select

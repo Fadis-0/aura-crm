@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { Modal } from "@/components/overlays";
 import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import type { Lead } from "@/lib/types";
+import { planPayout } from "@/lib/commission";
+import { money } from "@/lib/utils";
+import type { Lead, Project, ProjectPlan } from "@/lib/types";
 
 /**
  * The marketer's own lead form. Deliberately smaller than the admin one: no
@@ -18,11 +20,18 @@ export function CreateLeadDialog({
   onClose,
   affiliateId,
   onCreated,
+  projects = [],
+  plans = [],
+  lockedProjectId = null,
 }: {
   open: boolean;
   onClose: () => void;
   affiliateId: string | null;
   onCreated?: (lead: Lead) => void;
+  projects?: Project[];
+  plans?: ProjectPlan[];
+  /** Set when the form is opened from inside one project. */
+  lockedProjectId?: string | null;
 }) {
   const router = useRouter();
   const sb = supabaseBrowser();
@@ -31,6 +40,9 @@ export function CreateLeadDialog({
   const [saving, setSaving] = useState(false);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  const projectId = lockedProjectId ?? form.project_id ?? "";
+  const planOptions = plans.filter((pl) => pl.project_id === projectId);
 
   const close = () => {
     setForm({});
@@ -56,6 +68,8 @@ export function CreateLeadDialog({
         temperature: form.temperature || "warm",
         source: "affiliate",
         affiliate_id: affiliateId,
+        project_id: projectId || null,
+        plan_id: form.plan_id || null,
         estimated_value: form.value ? Number(form.value) : 0,
         notes: form.notes || null,
       })
@@ -119,6 +133,43 @@ export function CreateLeadDialog({
             onChange={(e) => set("email", e.target.value)}
           />
         </Field>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          {lockedProjectId ? null : (
+            <Field label="Project" hint="what they'd be buying">
+              <Select
+                value={form.project_id ?? ""}
+                onChange={(e) => {
+                  set("project_id", e.target.value);
+                  set("plan_id", "");
+                }}
+              >
+                <option value="">Not decided yet</option>
+                {projects.map((pr) => (
+                  <option key={pr.id} value={pr.id}>
+                    {pr.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+          )}
+          <Field label="Plan" hint="sets what you earn">
+            <Select
+              value={form.plan_id ?? ""}
+              onChange={(e) => set("plan_id", e.target.value)}
+              disabled={!projectId}
+            >
+              <option value="">
+                {projectId ? "Not decided yet" : "Pick a project first"}
+              </option>
+              {planOptions.map((pl) => (
+                <option key={pl.id} value={pl.id}>
+                  {pl.name} — {money(planPayout(pl))} to you
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </div>
 
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Stage">

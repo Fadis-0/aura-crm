@@ -15,9 +15,6 @@ export type NewPartner = {
   commune?: string;
   addressLine?: string;
   postalCode?: string;
-  commissionType?: "fixed" | "percent";
-  commissionAmount?: number;
-  commissionRate?: number;
   ccpRip?: string;
   ccpHolder?: string;
   company?: string;
@@ -68,9 +65,6 @@ export async function createPartnerAccount(
       commune: input.commune?.trim() || null,
       address_line: input.addressLine?.trim() || null,
       postal_code: input.postalCode?.trim() || null,
-      commission_type: input.commissionType ?? "fixed",
-      commission_amount: input.commissionAmount ?? 0,
-      commission_rate: input.commissionRate ?? 0,
       ccp_rip: input.ccpRip ? normaliseRip(input.ccpRip) : null,
       ccp_holder: input.ccpHolder?.trim() || null,
     },

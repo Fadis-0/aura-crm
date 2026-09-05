@@ -23,19 +23,21 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useServerState } from "@/lib/use-server-state";
 import { LOCALE } from "@/lib/utils";
-import { commissionLabel } from "@/lib/commission";
-import type { Project, ProjectMarketer } from "@/lib/types";
+import { plansPayoutRange } from "@/lib/commission";
+import type { Project, ProjectMarketer, ProjectPlan } from "@/lib/types";
 
 type Filter = "all" | "mine" | "available";
 
 export function PortalProjects({
   projects,
   initialJoined,
+  plans,
   affiliateId,
   assetCounts,
 }: {
   projects: Project[];
   initialJoined: ProjectMarketer[];
+  plans: ProjectPlan[];
   affiliateId: string | null;
   assetCounts: Record<string, number>;
 }) {
@@ -45,6 +47,9 @@ export function PortalProjects({
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
+
+  const payoutFor = (id: string) =>
+    plansPayoutRange(plans.filter((pl) => pl.project_id === id));
 
   const isMine = (id: string) =>
     joined.some((j) => j.project_id === id && j.status === "active");
@@ -198,15 +203,8 @@ export function PortalProjects({
                 </p>
 
                 <div className="mt-3 flex flex-wrap items-center gap-2">
-                  {p.affiliate_commission_amount || p.affiliate_commission_rate ? (
-                    <Badge accent="clay">
-                      {commissionLabel(
-                        p.affiliate_commission_type,
-                        p.affiliate_commission_amount,
-                        p.affiliate_commission_rate,
-                      )}{" "}
-                      per deal
-                    </Badge>
+                  {payoutFor(p.id) ? (
+                    <Badge accent="clay">{payoutFor(p.id)} per deal</Badge>
                   ) : null}
                   {files > 0 ? (
                     <span className="inline-flex items-center gap-1 text-[11.5px] text-ink-4">

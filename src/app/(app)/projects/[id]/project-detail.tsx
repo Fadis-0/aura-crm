@@ -35,6 +35,7 @@ import { Combobox } from "@/components/combobox";
 import { useServerState } from "@/lib/use-server-state";
 import { cn, money, LOCALE } from "@/lib/utils";
 import {
+  PLAN_KINDS,
   PRIORITY_ACCENT,
   PRIORITY_LABEL,
   PROJECT_STATUSES,
@@ -44,14 +45,21 @@ import {
   type Client,
   type CommissionType,
   type Invoice,
+  type PlanKind,
   type Priority,
   type Profile,
   type Project,
   type ProjectAsset,
   type ProjectMarketer,
+  type ProjectPlan,
   type ProjectStatus,
   type Task,
 } from "@/lib/types";
+
+const PLAN_KIND_LABEL: Record<PlanKind, string> = {
+  one_time: "One-time",
+  subscription: "Subscription",
+};
 
 const ACCENTS = ["clay", "amber", "sage", "indigo", "plum", "rose"] as const;
 
@@ -64,6 +72,7 @@ export function ProjectDetail({
   assets,
   marketers,
   affiliates,
+  initialPlans,
 }: {
   project: Project;
   clients: Client[];
@@ -73,12 +82,14 @@ export function ProjectDetail({
   assets: ProjectAsset[];
   marketers: ProjectMarketer[];
   affiliates: Affiliate[];
+  initialPlans: ProjectPlan[];
 }) {
   const sb = supabaseBrowser();
   const router = useRouter();
 
   const [draft, setDraft] = useState<Project>(project);
   const [tasks, setTasks] = useServerState(initialTasks);
+  const [plans, setPlans] = useServerState(initialPlans);
   const [newTask, setNewTask] = useState("");
   const [saving, setSaving] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -165,6 +176,31 @@ export function ProjectDetail({
   const removeTask = async (id: string) => {
     setTasks((rows) => rows.filter((t) => t.id !== id));
     await sb.from("tasks").delete().eq("id", id);
+  };
+
+  const addPlan = async () => {
+    const { data, error } = await sb
+      .from("project_plans")
+      .insert({
+        project_id: project.id,
+        name: `Plan ${plans.length + 1}`,
+        kind: "one_time",
+        position: plans.length,
+      })
+      .select("*")
+      .single();
+    if (error) return toast.error(error.message);
+    setPlans((p) => [...p, data as ProjectPlan]);
+  };
+
+  const updatePlan = async (id: string, patch: Partial<ProjectPlan>) => {
+    setPlans((rows) => rows.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+    await sb.from("project_plans").update(patch).eq("id", id);
+  };
+
+  const removePlan = async (id: string) => {
+    setPlans((rows) => rows.filter((p) => p.id !== id));
+    await sb.from("project_plans").delete().eq("id", id);
   };
 
   const remove = async () => {
@@ -392,18 +428,102 @@ export function ProjectDetail({
                   />
                 </Field>
 
-                <CommissionField
-                  type={draft.affiliate_commission_type ?? "fixed"}
-                  amount={draft.affiliate_commission_amount ?? 0}
-                  rate={draft.affiliate_commission_rate ?? 0}
-                  onTypeChange={(t) =>
-                    set("affiliate_commission_type", t as CommissionType)
-                  }
-                  onAmountChange={(v) => set("affiliate_commission_amount", v)}
-                  onRateChange={(v) => set("affiliate_commission_rate", v)}
-                  label="What a partner earns"
-                  sampleValue={draft.budget}
-                />
+                <div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="text-[12px] font-medium text-ink-2">
+                      Payment plans
+                    </span>
+                    <button
+                      onClick={addPlan}
+                      className="inline-flex items-center gap-1 text-[12px] font-medium text-[var(--clay)] hover:underline"
+                    >
+                      <Plus size={12} /> Add plan
+                    </button>
+                  </div>
+
+                  {plans.length === 0 ? (
+                    <p className="rounded-md border border-dashed border-line-2 px-3 py-3 text-[12px] text-ink-4">
+                      No plans yet. Add a one-time sell or a subscription tier —
+                      each pays partners its own commission.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {plans.map((plan, i) => (
+                        <div
+                          key={plan.id}
+                          className="space-y-2.5 rounded-md border border-line bg-surface p-3"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                              Plan {i + 1}
+                            </span>
+                            <button
+                              onClick={() => removePlan(plan.id)}
+                              aria-label={`Delete ${plan.name || `plan ${i + 1}`}`}
+                              className="shrink-0 text-ink-4 transition-colors hover:text-[var(--rose)]"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+
+                          <div className="grid gap-2.5 sm:grid-cols-2">
+                            <Field label="Plan name">
+                              <Input
+                                value={plan.name}
+                                onChange={(e) => updatePlan(plan.id, { name: e.target.value })}
+                                className="h-8"
+                                placeholder="Starter"
+                              />
+                            </Field>
+                            <Field label="Billing">
+                              <Select
+                                value={plan.kind}
+                                onChange={(e) =>
+                                  updatePlan(plan.id, { kind: e.target.value as PlanKind })
+                                }
+                                className="h-8"
+                              >
+                                {PLAN_KINDS.map((k) => (
+                                  <option key={k} value={k}>
+                                    {PLAN_KIND_LABEL[k]}
+                                  </option>
+                                ))}
+                              </Select>
+                            </Field>
+                          </div>
+
+                          <Field
+                            label="Price"
+                            hint={plan.kind === "subscription" ? "DA / month" : "DA"}
+                          >
+                            <Input
+                              type="number"
+                              min={0}
+                              value={plan.price}
+                              onChange={(e) =>
+                                updatePlan(plan.id, { price: Number(e.target.value) })
+                              }
+                              className="h-8"
+                            />
+                          </Field>
+
+                          <CommissionField
+                            type={plan.commission_type}
+                            amount={plan.commission_amount}
+                            rate={plan.commission_rate}
+                            onTypeChange={(t) =>
+                              updatePlan(plan.id, { commission_type: t as CommissionType })
+                            }
+                            onAmountChange={(v) => updatePlan(plan.id, { commission_amount: v })}
+                            onRateChange={(v) => updatePlan(plan.id, { commission_rate: v })}
+                            label="Partner earns"
+                            sampleValue={plan.price}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
 
                 <p className="flex items-center gap-1.5 text-[12px] text-ink-3">
                   <Users size={13} className="text-ink-4" />
@@ -483,7 +603,7 @@ export function ProjectDetail({
               <Field label="Name" required>
                 <Input value={draft.name} onChange={(e) => set("name", e.target.value)} />
               </Field>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Code">
                   <Input
                     value={draft.code ?? ""}
@@ -507,7 +627,7 @@ export function ProjectDetail({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Status">
                   <Select
                     value={draft.status}
@@ -534,7 +654,7 @@ export function ProjectDetail({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Start">
                   <Input
                     type="date"
@@ -551,7 +671,7 @@ export function ProjectDetail({
                 </Field>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Budget" hint="DA">
                   <Input
                     type="number"

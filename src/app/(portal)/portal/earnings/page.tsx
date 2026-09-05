@@ -3,7 +3,6 @@ import { getPortalContext } from "@/lib/portal";
 import { supabaseServer } from "@/lib/supabase/server";
 import { Badge, Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { LOCALE, money } from "@/lib/utils";
-import { commissionLabel } from "@/lib/commission";
 import type { Commission, Lead } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -44,24 +43,13 @@ export default async function EarningsPage() {
     .reduce((s, c) => s + c.amount, 0);
 
   const won = leads.filter((l) => l.stage === "won");
-  const terms = affiliate
-    ? commissionLabel(
-        affiliate.commission_type,
-        affiliate.commission_amount,
-        affiliate.commission_rate,
-      )
-    : null;
 
   return (
     <>
       <PageHeader
         eyebrow="Money"
         title="Earnings"
-        description={
-          terms
-            ? `You earn ${terms} on every deal you close, unless a project says otherwise.`
-            : "What you have earned and what is still owed to you."
-        }
+        description="What you have earned and what is still owed to you. Each deal pays on the plan the client bought."
       />
 
       <div className="mb-5 grid gap-3 sm:grid-cols-3">

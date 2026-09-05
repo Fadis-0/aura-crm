@@ -102,7 +102,7 @@ export default async function DashboardPage() {
       .lte("due_date", inTwoWeeks.toISOString().slice(0, 10))
       .order("due_date")
       .limit(7),
-    sb.from("affiliates").select("id,name,commission_rate,accent,status"),
+    sb.from("affiliates").select("id,name,accent,status"),
     sb.from("commissions").select("affiliate_id,amount,status"),
   ]);
 
@@ -116,7 +116,6 @@ export default async function DashboardPage() {
   const affiliates = (affiliatesRes.data ?? []) as {
     id: string;
     name: string;
-    commission_rate: number;
     accent: string;
     status: string;
   }[];
@@ -488,7 +487,7 @@ export default async function DashboardPage() {
                         {a.name}
                       </p>
                       <p className="text-[11px] text-ink-4">
-                        {a.leadsFrom} leads · {a.commission_rate}%
+                        {a.leadsFrom} leads
                       </p>
                     </div>
                     <div className="shrink-0 text-right">
