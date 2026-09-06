@@ -398,7 +398,6 @@ export function CreateDialog({
   const meta =
     kind === "announcement" ? ANNOUNCE_KIND : KINDS.find((k) => k.value === kind)!;
 
-  const cards = announce ? [...KINDS, ANNOUNCE_KIND] : KINDS;
   // Back-office links only work for owners, so warn before sending one out.
   const reachesMarketers = everyone
     ? people.some((p) => p.role === "marketer")
@@ -435,9 +434,10 @@ export function CreateDialog({
         </>
       }
     >
-      {!only ? (
+      {/* The announce dialog is one kind only, so it needs no picker either. */}
+      {!only && !announce ? (
         <div className="mb-5 grid grid-cols-3 gap-1.5">
-          {cards.map((k) => {
+          {KINDS.map((k) => {
             const active = k.value === kind;
             return (
               <button

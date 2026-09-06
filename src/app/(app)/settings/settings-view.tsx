@@ -12,11 +12,12 @@ import {
   CardHeader,
   Field,
   Input,
+  Textarea,
 } from "@/components/ui";
 import { ThemeToggle } from "@/components/theme";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { cn, type Accent } from "@/lib/utils";
-import type { Profile } from "@/lib/types";
+import type { Profile, WorkspaceSettings } from "@/lib/types";
 
 const ACCENTS: Accent[] = ["clay", "amber", "sage", "indigo", "plum", "rose"];
 
@@ -29,10 +30,12 @@ const SHORTCUTS = [
 
 export function SettingsView({
   profiles,
+  settings,
   currentUserId,
   email,
 }: {
   profiles: Profile[];
+  settings: WorkspaceSettings | null;
   currentUserId: string;
   email: string;
 }) {
@@ -47,6 +50,39 @@ export function SettingsView({
 
   const [newPassword, setNewPassword] = useState("");
   const [changing, setChanging] = useState(false);
+
+  // What gets printed at the top of every facture.
+  const [billing, setBilling] = useState<Partial<WorkspaceSettings>>(settings ?? {});
+  const [savingBilling, setSavingBilling] = useState(false);
+
+  const setBill = <K extends keyof WorkspaceSettings>(k: K, v: string) =>
+    setBilling((b) => ({ ...b, [k]: v }));
+
+  const saveBilling = async () => {
+    setSavingBilling(true);
+    const { error } = await sb
+      .from("workspace_settings")
+      .update({
+        legal_name: billing.legal_name?.trim() || "",
+        tagline: billing.tagline || null,
+        address: billing.address || null,
+        phone: billing.phone || null,
+        email: billing.email || null,
+        website: billing.website || null,
+        rc: billing.rc || null,
+        nif: billing.nif || null,
+        nis: billing.nis || null,
+        art: billing.art || null,
+        bank_details: billing.bank_details || null,
+        invoice_note: billing.invoice_note || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", true);
+    setSavingBilling(false);
+    if (error) return toast.error(error.message);
+    toast.success("Invoice details saved");
+    router.refresh();
+  };
 
   const saveProfile = async () => {
     setSaving(true);
@@ -127,6 +163,100 @@ export function SettingsView({
             <div className="flex justify-end">
               <Button variant="primary" onClick={saveProfile} loading={saving}>
                 Save profile
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader
+            title="Invoice details"
+            subtitle="Printed at the top of every facture and receipt"
+          />
+          <div className="space-y-3 p-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Legal name" hint="as registered">
+                <Input
+                  value={billing.legal_name ?? ""}
+                  onChange={(e) => setBill("legal_name", e.target.value)}
+                  placeholder="Aura Studio SARL"
+                />
+              </Field>
+              <Field label="Tagline" hint="optional">
+                <Input
+                  value={billing.tagline ?? ""}
+                  onChange={(e) => setBill("tagline", e.target.value)}
+                  placeholder="Design and development"
+                />
+              </Field>
+            </div>
+
+            <Field label="Address">
+              <Textarea
+                rows={2}
+                value={billing.address ?? ""}
+                onChange={(e) => setBill("address", e.target.value)}
+                placeholder="12 rue Didouche Mourad, Alger"
+              />
+            </Field>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Phone">
+                <Input
+                  value={billing.phone ?? ""}
+                  onChange={(e) => setBill("phone", e.target.value)}
+                  placeholder="+213 ..."
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={billing.email ?? ""}
+                  onChange={(e) => setBill("email", e.target.value)}
+                />
+              </Field>
+              <Field label="Website">
+                <Input
+                  value={billing.website ?? ""}
+                  onChange={(e) => setBill("website", e.target.value)}
+                />
+              </Field>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-4">
+              <Field label="RC">
+                <Input value={billing.rc ?? ""} onChange={(e) => setBill("rc", e.target.value)} />
+              </Field>
+              <Field label="NIF">
+                <Input value={billing.nif ?? ""} onChange={(e) => setBill("nif", e.target.value)} />
+              </Field>
+              <Field label="NIS">
+                <Input value={billing.nis ?? ""} onChange={(e) => setBill("nis", e.target.value)} />
+              </Field>
+              <Field label="ART">
+                <Input value={billing.art ?? ""} onChange={(e) => setBill("art", e.target.value)} />
+              </Field>
+            </div>
+
+            <Field label="Payment details" hint="RIB, CCP, however they pay you">
+              <Textarea
+                rows={2}
+                value={billing.bank_details ?? ""}
+                onChange={(e) => setBill("bank_details", e.target.value)}
+              />
+            </Field>
+
+            <Field label="Footer note" hint="optional, small print">
+              <Textarea
+                rows={2}
+                value={billing.invoice_note ?? ""}
+                onChange={(e) => setBill("invoice_note", e.target.value)}
+              />
+            </Field>
+
+            <div className="flex justify-end">
+              <Button variant="primary" onClick={saveBilling} loading={savingBilling}>
+                Save invoice details
               </Button>
             </div>
           </div>

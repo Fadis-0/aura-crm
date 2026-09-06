@@ -380,19 +380,52 @@ export type Interaction = {
   created_at: string;
 };
 
+export type InvoiceKind = "invoice" | "receipt";
+
 export type Invoice = {
   id: ID;
   number: string;
   client_id: ID | null;
   project_id: ID | null;
+  /** The total, tax included. Kept in step with the lines on every save. */
   amount: number;
   currency: string;
   status: "draft" | "sent" | "paid" | "overdue" | "void";
+  kind: InvoiceKind;
+  tax_rate: number;
   issued_on: string;
   due_on: string | null;
   paid_on: string | null;
   notes: string | null;
   created_at: string;
+};
+
+export type InvoiceItem = {
+  id: ID;
+  invoice_id: ID;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  position: number;
+  created_at: string;
+};
+
+/** The studio's own details, as they appear on a printed facture. */
+export type WorkspaceSettings = {
+  id: boolean;
+  legal_name: string;
+  tagline: string | null;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  website: string | null;
+  rc: string | null;
+  nif: string | null;
+  nis: string | null;
+  art: string | null;
+  bank_details: string | null;
+  invoice_note: string | null;
+  updated_at: string;
 };
 
 export type Commission = {
