@@ -8,13 +8,15 @@ import {
   FolderKanban,
   Handshake,
   ListChecks,
+  Check,
+  Megaphone,
   Target,
   Users,
 } from "lucide-react";
 import { Modal } from "@/components/overlays";
 import { Combobox, type ComboOption } from "@/components/combobox";
 import { planPayout } from "@/lib/commission";
-import { Button, Field, Input, Select, Textarea } from "@/components/ui";
+import { Button, Field, Input, Segmented, Select, Textarea } from "@/components/ui";
 import { createPartnerAccount } from "@/app/(app)/affiliates/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { WILAYAS } from "@/lib/algeria";
@@ -27,7 +29,8 @@ export type CreateKind =
   | "project"
   | "task"
   | "event"
-  | "affiliate";
+  | "affiliate"
+  | "announcement";
 
 const KINDS: {
   value: CreateKind;
@@ -43,6 +46,20 @@ const KINDS: {
   { value: "event", label: "Event", icon: CalendarDays, blurb: "Meeting or deadline", table: "events" },
   { value: "affiliate", label: "Partner", icon: Handshake, blurb: "Sends you leads, gets a login", table: "affiliates" },
 ];
+
+/** Only offered from the Announce button, so it stays out of KINDS. */
+const ANNOUNCE_KIND = {
+  value: "announcement" as const,
+  label: "Announcement",
+  icon: Megaphone,
+  blurb: "Lands in their notifications",
+  table: "notifications",
+};
+
+type Person = { id: string; full_name: string; email: string; role: string };
+
+/** What the announcement points at, if anything. */
+type Attach = "none" | "link" | "invoice";
 
 const todayLocal = () => {
   const d = new Date();
@@ -63,17 +80,21 @@ export function CreateDialog({
   open,
   onClose,
   only,
+  announce,
   onCreated,
 }: {
   open: boolean;
   onClose: () => void;
   only?: CreateKind;
+  /** Adds the announcement card and starts on it. */
+  announce?: boolean;
   onCreated?: (row: Row) => void;
 }) {
   const router = useRouter();
   const sb = supabaseBrowser();
 
-  const [kind, setKind] = useState<CreateKind>(only ?? "lead");
+  const initialKind: CreateKind = only ?? (announce ? "announcement" : "lead");
+  const [kind, setKind] = useState<CreateKind>(initialKind);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<Record<string, string>>({});
 
@@ -81,6 +102,12 @@ export function CreateDialog({
   const [clients, setClients] = useState<ComboOption[]>([]);
   const [projects, setProjects] = useState<ComboOption[]>([]);
   const [plans, setPlans] = useState<ProjectPlan[]>([]);
+
+  const [people, setPeople] = useState<Person[]>([]);
+  const [invoices, setInvoices] = useState<ComboOption[]>([]);
+  const [everyone, setEveryone] = useState(true);
+  const [recipients, setRecipients] = useState<string[]>([]);
+  const [attach, setAttach] = useState<Attach>("none");
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -138,9 +165,50 @@ export function CreateDialog({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Only the announce dialog needs people and invoices, so they load apart.
+  useEffect(() => {
+    if (!open || !announce) return;
+    let cancelled = false;
+
+    (async () => {
+      const [prof, inv] = await Promise.all([
+        sb
+          .from("profiles")
+          .select("id,full_name,email,role")
+          .eq("status", "active")
+          .order("full_name"),
+        sb
+          .from("invoices")
+          .select("id,number,amount,status")
+          .order("issued_on", { ascending: false })
+          .limit(100),
+      ]);
+      if (cancelled) return;
+
+      setPeople((prof.data ?? []) as Person[]);
+
+      type I = { id: string; number: string; amount: number; status: string };
+      setInvoices(
+        ((inv.data ?? []) as I[]).map((i) => ({
+          value: i.id,
+          label: i.number,
+          hint: `${money(i.amount)} · ${i.status}`,
+        })),
+      );
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, announce]);
+
   const close = () => {
     setForm({});
-    setKind(only ?? "lead");
+    setKind(initialKind);
+    setEveryone(true);
+    setRecipients([]);
+    setAttach("none");
     onClose();
   };
 
@@ -181,8 +249,56 @@ export function CreateDialog({
     router.refresh();
   };
 
+  /**
+   * Writes one notification per recipient through an admin-only function.
+   * Doing it in the browser would need write access to other people's feeds,
+   * which is exactly what nobody should have.
+   */
+  const saveAnnouncement = async () => {
+    const title = (form.name ?? "").trim();
+    if (!title) return toast.error("Give the announcement a title.");
+    if (!everyone && recipients.length === 0) {
+      return toast.error("Pick who should get this, or send it to everyone.");
+    }
+
+    let href: string | null = null;
+    if (attach === "link") {
+      const link = (form.link ?? "").trim();
+      if (!link) return toast.error("Paste the link, or attach nothing.");
+      if (!link.startsWith("https://") && !(link.startsWith("/") && !link.startsWith("//"))) {
+        return toast.error("Links must start with https:// or /.");
+      }
+      href = link;
+    }
+    if (attach === "invoice") {
+      if (!form.invoice) return toast.error("Pick the invoice to point at.");
+      href = `/invoices/${form.invoice}`;
+    }
+
+    setSaving(true);
+    const { data, error } = await sb.rpc("broadcast_announcement", {
+      title,
+      body: (form.message ?? "").trim() || null,
+      href,
+      targets: everyone ? null : recipients,
+    });
+    setSaving(false);
+
+    if (error) return toast.error(error.message);
+
+    const sent = typeof data === "number" ? data : recipients.length;
+    toast.success(
+      sent === 0
+        ? "Nobody active to send that to"
+        : `Sent to ${sent} ${sent === 1 ? "person" : "people"}`,
+    );
+    close();
+    router.refresh();
+  };
+
   const save = async () => {
     if (kind === "affiliate") return savePartner();
+    if (kind === "announcement") return saveAnnouncement();
 
     const name = (form.name ?? "").trim();
     if (!name) {
@@ -265,32 +381,52 @@ export function CreateDialog({
     router.refresh();
   };
 
-  const nameLabel = kind === "task" || kind === "event" ? "Title" : "Name";
+  const nameLabel =
+    kind === "task" || kind === "event" || kind === "announcement" ? "Title" : "Name";
   const source = form.source || "direct";
-  const meta = KINDS.find((k) => k.value === kind)!;
+  const meta =
+    kind === "announcement" ? ANNOUNCE_KIND : KINDS.find((k) => k.value === kind)!;
+
+  const cards = announce ? [...KINDS, ANNOUNCE_KIND] : KINDS;
+  // Back-office links only work for owners, so warn before sending one out.
+  const reachesMarketers = everyone
+    ? people.some((p) => p.role === "marketer")
+    : people.some((p) => p.role === "marketer" && recipients.includes(p.id));
 
   return (
     <Modal
       open={open}
       onClose={close}
-      title={only ? `New ${meta.label.toLowerCase()}` : "Create something"}
+      title={
+        only
+          ? `New ${meta.label.toLowerCase()}`
+          : announce
+            ? "Announce something"
+            : "Create something"
+      }
       description={
         only
           ? meta.blurb
-          : "Pick what you're adding, fill the essentials, refine it later."
+          : announce
+            ? "Push a note, a link or an invoice into people's notifications."
+            : "Pick what you're adding, fill the essentials, refine it later."
       }
       footer={
         <>
           <Button onClick={close}>Cancel</Button>
           <Button variant="primary" loading={saving} onClick={save}>
-            {kind === "affiliate" ? "Create account" : "Create"}
+            {kind === "affiliate"
+            ? "Create account"
+            : kind === "announcement"
+              ? "Publish"
+              : "Create"}
           </Button>
         </>
       }
     >
       {!only ? (
         <div className="mb-5 grid grid-cols-3 gap-1.5">
-          {KINDS.map((k) => {
+          {cards.map((k) => {
             const active = k.value === kind;
             return (
               <button
@@ -323,10 +459,143 @@ export function CreateDialog({
                 ? "Draft the onboarding email"
                 : kind === "event"
                   ? "Kick-off call"
-                  : "Acme Studio"
+                  : kind === "announcement"
+                    ? "New payment plans are live"
+                    : "Acme Studio"
             }
           />
         </Field>
+
+        {kind === "announcement" && (
+          <>
+            <Field label="Message" hint="optional">
+              <Textarea
+                rows={3}
+                value={form.message ?? ""}
+                onChange={(e) => set("message", e.target.value)}
+                placeholder="A line or two of detail."
+              />
+            </Field>
+
+            <div>
+              <span className="mb-1.5 block text-[12px] font-medium text-ink-2">
+                Attach
+              </span>
+              <Segmented
+                value={attach}
+                onChange={(v) => setAttach(v)}
+                options={[
+                  { value: "none", label: "Nothing" },
+                  { value: "link", label: "Link" },
+                  { value: "invoice", label: "Invoice" },
+                ]}
+              />
+            </div>
+
+            {attach === "link" ? (
+              <Field label="Link" hint="https:// or a path like /projects" required>
+                <Input
+                  type="url"
+                  value={form.link ?? ""}
+                  onChange={(e) => set("link", e.target.value)}
+                  placeholder="https://example.com/brief"
+                />
+              </Field>
+            ) : null}
+
+            {attach === "invoice" ? (
+              <Field label="Invoice" required>
+                <Combobox
+                  value={form.invoice ?? null}
+                  onChange={(v) => set("invoice", v ?? "")}
+                  options={invoices}
+                  placeholder="Search invoices…"
+                  clearLabel="No invoice"
+                  emptyLabel="No invoice matches that"
+                />
+              </Field>
+            ) : null}
+
+            {attach !== "none" && reachesMarketers ? (
+              <p className="text-[11.5px] leading-relaxed text-[var(--amber)]">
+                Partners cannot open back-office pages, so keep the message
+                readable on its own for them.
+              </p>
+            ) : null}
+
+            <div className="border-t border-line pt-4">
+              <div className="mb-2.5 flex items-center justify-between gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-4">
+                  Who gets it
+                </p>
+                <Segmented
+                  value={everyone ? "all" : "some"}
+                  onChange={(v) => setEveryone(v === "all")}
+                  options={[
+                    { value: "all", label: "@everyone", count: people.length },
+                    { value: "some", label: "Pick people", count: recipients.length },
+                  ]}
+                />
+              </div>
+
+              {everyone ? (
+                <p className="text-[12px] leading-relaxed text-ink-4">
+                  Everyone with an active account, you excluded.
+                </p>
+              ) : people.length === 0 ? (
+                <p className="text-[12px] text-ink-4">Nobody active to pick from yet.</p>
+              ) : (
+                <div className="max-h-52 overflow-y-auto rounded-lg border border-line">
+                  <ul className="divide-y divide-line">
+                    {people.map((person) => {
+                      const picked = recipients.includes(person.id);
+                      return (
+                        <li key={person.id}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setRecipients((r) =>
+                                picked
+                                  ? r.filter((id) => id !== person.id)
+                                  : [...r, person.id],
+                              )
+                            }
+                            className={cn(
+                              "flex w-full items-center gap-2.5 px-3 py-2 text-left transition-colors",
+                              picked ? "bg-[var(--clay-soft)]/40" : "hover:bg-surface-2",
+                            )}
+                          >
+                            <span
+                              className={cn(
+                                "grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors",
+                                picked
+                                  ? "border-[var(--clay)] bg-[var(--clay)] text-white"
+                                  : "border-line-2",
+                              )}
+                            >
+                              {picked ? <Check size={11} strokeWidth={3} /> : null}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-[12.5px] text-ink">
+                                {person.full_name}
+                              </span>
+                              <span className="block truncate text-[11px] text-ink-4">
+                                {person.email}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-[10.5px] uppercase tracking-wide text-ink-4">
+                              {person.role === "marketer" ? "Partner" : "Owner"}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
         {(kind === "lead" || kind === "client") && (
           <>

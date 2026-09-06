@@ -20,6 +20,7 @@ export function AppShell({
 }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [announceOpen, setAnnounceOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
 
   useEffect(() => {
@@ -53,6 +54,7 @@ export function AppShell({
           onOpenSearch={() => setPaletteOpen(true)}
           onOpenMobileNav={() => setMobileNav(true)}
           onQuickAdd={() => setQuickAddOpen(true)}
+          onAnnounce={() => setAnnounceOpen(true)}
         />
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <div className="mx-auto w-full max-w-[1400px] animate-fade-up">{children}</div>
@@ -63,6 +65,11 @@ export function AppShell({
         <CommandPalette open onOpenChange={setPaletteOpen} />
       ) : null}
       <CreateDialog open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />
+      <CreateDialog
+        announce
+        open={announceOpen}
+        onClose={() => setAnnounceOpen(false)}
+      />
     </div>
   );
 }

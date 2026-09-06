@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { LogOut, Menu, Plus, Search, UserRound } from "lucide-react";
+import { LogOut, Megaphone, Menu, Plus, Search, UserRound } from "lucide-react";
 import { Menu as DropMenu } from "@/components/overlays";
 import { Notifications } from "./notifications";
 import { Avatar, Button } from "@/components/ui";
@@ -15,12 +15,14 @@ export function Topbar({
   onOpenSearch,
   onOpenMobileNav,
   onQuickAdd,
+  onAnnounce,
 }: {
   profile: Profile | null;
   notifications: Notification[];
   onOpenSearch: () => void;
   onOpenMobileNav: () => void;
   onQuickAdd: () => void;
+  onAnnounce: () => void;
 }) {
   const router = useRouter();
 
@@ -70,6 +72,15 @@ export function Topbar({
         className="md:hidden"
       >
         <Plus size={16} strokeWidth={2.5} />
+      </Button>
+
+      <Button
+        size="icon"
+        onClick={onAnnounce}
+        aria-label="Announce something"
+        title="Announce something"
+      >
+        <Megaphone size={16} />
       </Button>
 
       <Notifications initial={notifications} />
