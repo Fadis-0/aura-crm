@@ -58,7 +58,7 @@ import {
 
 const PLAN_KIND_LABEL: Record<PlanKind, string> = {
   one_time: "One-time",
-  subscription: "Subscription",
+  subscription: "Annual subscription",
 };
 
 const ACCENTS = ["clay", "amber", "sage", "indigo", "plum", "rose"] as const;
@@ -443,7 +443,7 @@ export function ProjectDetail({
 
                   {plans.length === 0 ? (
                     <p className="rounded-md border border-dashed border-line-2 px-3 py-3 text-[12px] text-ink-4">
-                      No plans yet. Add a one-time sell or a subscription tier —
+                      No plans yet. Add a one-time sell or an annual subscription —
                       each pays partners its own commission.
                     </p>
                   ) : (
@@ -494,7 +494,7 @@ export function ProjectDetail({
 
                           <Field
                             label="Price"
-                            hint={plan.kind === "subscription" ? "DA / month" : "DA"}
+                            hint={plan.kind === "subscription" ? "DA / year" : "DA"}
                           >
                             <Input
                               type="number"

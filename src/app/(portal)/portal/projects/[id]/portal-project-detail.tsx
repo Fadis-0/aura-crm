@@ -194,7 +194,7 @@ export function PortalProjectDetail({
                       </p>
                       <p className="mt-0.5 text-[11.5px] text-ink-4">
                         {money(pl.price)}
-                        {pl.kind === "subscription" ? " / month" : " one-time"}
+                        {pl.kind === "subscription" ? " / year" : " one-time"}
                       </p>
                     </div>
                     <Badge accent="clay">{money(planPayout(pl))} to you</Badge>

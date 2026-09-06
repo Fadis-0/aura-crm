@@ -78,3 +78,25 @@ export function relativeTime(input: string | Date) {
   if (days < 7) return `${days}d ago`;
   return d.toLocaleDateString(LOCALE, { month: "short", day: "numeric" });
 }
+
+/* ------------------------------------------------------------- date input --
+
+   A <input type="datetime-local"> reports "" while it is half-filled — typing
+   a 0 into the year is exactly that — and new Date("").toISOString() throws
+   RangeError rather than returning anything usable. These two never throw. */
+
+/** An ISO string for storage, or null when the field cannot be read yet. */
+export function isoFromLocalInput(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
+/** An ISO string as a datetime-local value, or "" when it cannot be read. */
+export function localInputFromIso(iso: string | null | undefined): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  return d.toISOString().slice(0, 16);
+}

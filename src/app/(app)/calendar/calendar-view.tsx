@@ -19,7 +19,7 @@ import {
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { Combobox } from "@/components/combobox";
 import { useServerState } from "@/lib/use-server-state";
-import { cn, LOCALE } from "@/lib/utils";
+import { cn, isoFromLocalInput, localInputFromIso, LOCALE } from "@/lib/utils";
 import {
   EVENT_KINDS,
   EVENT_KIND_ACCENT,
@@ -59,12 +59,6 @@ function monthGrid(anchor: Date) {
   });
 }
 
-function toLocalInput(iso: string) {
-  const d = new Date(iso);
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
-
 export function CalendarView({
   initialEvents,
   clients,
@@ -81,6 +75,11 @@ export function CalendarView({
   const [view, setView] = useState<"month" | "agenda">("month");
   const [editing, setEditing] = useState<CalendarEvent | null>(null);
   const [draft, setDraft] = useState<Partial<CalendarEvent>>({});
+  // The datetime fields are held as raw text. A controlled value derived from
+  // the parsed date would erase what is being typed the moment it is briefly
+  // incomplete, which is what "0" in the year field is.
+  const [startsText, setStartsText] = useState("");
+  const [endsText, setEndsText] = useState("");
   const [saving, setSaving] = useState(false);
 
   const today = new Date();
@@ -109,16 +108,29 @@ export function CalendarView({
       starts_at: start.toISOString(),
       accent: "clay",
     });
+    setStartsText(localInputFromIso(start.toISOString()));
+    setEndsText("");
     setEditing({ id: "" } as CalendarEvent);
   };
 
   const openEvent = (e: CalendarEvent) => {
     setDraft(e);
+    setStartsText(localInputFromIso(e.starts_at));
+    setEndsText(localInputFromIso(e.ends_at));
     setEditing(e);
   };
 
   const save = async () => {
     if (!draft.title?.trim()) return toast.error("Give the event a title.");
+
+    const startsAt = isoFromLocalInput(startsText);
+    if (!startsAt) return toast.error("Pick a start date and time.");
+    const endsAt = isoFromLocalInput(endsText);
+    if (endsText && !endsAt) return toast.error("That end date is not complete.");
+    if (endsAt && endsAt < startsAt) {
+      return toast.error("The event cannot end before it starts.");
+    }
+
     setSaving(true);
 
     const kind = (draft.kind ?? "meeting") as EventKind;
@@ -126,8 +138,8 @@ export function CalendarView({
       title: draft.title.trim(),
       description: draft.description || null,
       kind,
-      starts_at: draft.starts_at ?? new Date().toISOString(),
-      ends_at: draft.ends_at || null,
+      starts_at: startsAt,
+      ends_at: endsAt,
       all_day: draft.all_day ?? false,
       location: draft.location || null,
       accent: EVENT_KIND_ACCENT[kind],
@@ -407,25 +419,15 @@ export function CalendarView({
             <Field label="Starts">
               <Input
                 type="datetime-local"
-                value={draft.starts_at ? toLocalInput(draft.starts_at) : ""}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    starts_at: new Date(e.target.value).toISOString(),
-                  }))
-                }
+                value={startsText}
+                onChange={(e) => setStartsText(e.target.value)}
               />
             </Field>
             <Field label="Ends" hint="optional">
               <Input
                 type="datetime-local"
-                value={draft.ends_at ? toLocalInput(draft.ends_at) : ""}
-                onChange={(e) =>
-                  setDraft((d) => ({
-                    ...d,
-                    ends_at: e.target.value ? new Date(e.target.value).toISOString() : null,
-                  }))
-                }
+                value={endsText}
+                onChange={(e) => setEndsText(e.target.value)}
               />
             </Field>
           </div>

@@ -640,7 +640,7 @@ export function PipelineBoard({
                   options={leadPlans.map((p) => ({
                     value: p.id,
                     label: p.name,
-                    hint: `${money(p.price)}${p.kind === "subscription" ? "/mo" : ""} · ${commissionLabel(p.commission_type, p.commission_amount, p.commission_rate)} to partner`,
+                    hint: `${money(p.price)}${p.kind === "subscription" ? "/yr" : ""} · ${commissionLabel(p.commission_type, p.commission_amount, p.commission_rate)} to partner`,
                   }))}
                   placeholder={draft.project_id ? "No plan yet" : "Pick a project first"}
                   clearLabel="No plan yet"

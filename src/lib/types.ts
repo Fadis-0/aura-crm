@@ -64,7 +64,7 @@ export type Affiliate = {
 export const PLAN_KINDS = ["one_time", "subscription"] as const;
 export type PlanKind = (typeof PLAN_KINDS)[number];
 
-/** One way to buy into a project: a one-time sell or a subscription tier.
+/** One way to buy into a project: a one-time sell or an annual subscription.
  *  Carries its own commission, since that is what actually pays a partner. */
 export type ProjectPlan = {
   id: ID;

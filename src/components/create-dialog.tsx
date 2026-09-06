@@ -18,7 +18,7 @@ import { Button, Field, Input, Select, Textarea } from "@/components/ui";
 import { createPartnerAccount } from "@/app/(app)/affiliates/actions";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { WILAYAS } from "@/lib/algeria";
-import { cn, money } from "@/lib/utils";
+import { cn, isoFromLocalInput, money } from "@/lib/utils";
 import type { ProjectPlan } from "@/lib/types";
 
 export type CreateKind =
@@ -206,7 +206,8 @@ export function CreateDialog({
           ? {
               title: name,
               kind: form.eventKind || "meeting",
-              starts_at: form.starts || new Date().toISOString(),
+              starts_at:
+                isoFromLocalInput(form.starts ?? "") ?? new Date().toISOString(),
               location: form.location || null,
               client_id: form.client || null,
             }
@@ -405,7 +406,7 @@ export function CreateDialog({
                     .map((pl) => ({
                       value: pl.id,
                       label: pl.name,
-                      hint: `${money(pl.price)}${pl.kind === "subscription" ? "/mo" : ""} · ${money(planPayout(pl))} to partner`,
+                      hint: `${money(pl.price)}${pl.kind === "subscription" ? "/yr" : ""} · ${money(planPayout(pl))} to partner`,
                     }))}
                   placeholder={form.project ? "No plan yet" : "Pick a project first"}
                   clearLabel="No plan yet"
