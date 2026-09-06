@@ -326,6 +326,8 @@ export function PipelineBoard({
         affiliate_id: selected.affiliate_id,
         lead_id: selected.id,
         lifetime_value: selected.estimated_value ?? 0,
+        // The plan they were quoted on is the plan they are now buying.
+        plan_id: selected.plan_id,
         tags: selected.tags,
         notes: selected.notes,
       })
@@ -341,6 +343,14 @@ export function PipelineBoard({
       .from("leads")
       .update({ stage: "won", converted_client_id: data.id })
       .eq("id", selected.id);
+
+    // The project they were buying is now theirs to own.
+    if (selected.project_id) {
+      await sb
+        .from("projects")
+        .update({ client_id: data.id })
+        .eq("id", selected.project_id);
+    }
 
     // Book what the partner is owed, on the plan's terms — commission is
     // set per project plan now, not on the affiliate's own record.

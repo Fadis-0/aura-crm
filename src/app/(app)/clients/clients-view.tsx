@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { Globe, Mail, Phone, Plus, Search, Trash2, Users } from "lucide-react";
 import { ConfirmDialog, Drawer } from "@/components/overlays";
 import { CreateDialog } from "@/components/create-dialog";
+import { Combobox } from "@/components/combobox";
 import { useServerState } from "@/lib/use-server-state";
 import {
   Avatar,
@@ -23,7 +24,7 @@ import {
 } from "@/components/ui";
 import { InteractionTimeline } from "@/components/interaction-timeline";
 import { supabaseBrowser } from "@/lib/supabase/client";
-import { accentFor, compactMoney, money, LOCALE } from "@/lib/utils";
+import { accentFor, money, LOCALE } from "@/lib/utils";
 import {
   CLIENT_STATUS_ACCENT,
   HEALTH_ACCENT,
@@ -34,6 +35,7 @@ import {
   type ClientStatus,
   type Invoice,
   type Project,
+  type ProjectPlan,
 } from "@/lib/types";
 
 type Filter = "all" | ClientStatus;
@@ -41,10 +43,12 @@ type Filter = "all" | ClientStatus;
 export function ClientsView({
   initialClients,
   projects,
+  plans,
   invoices,
 }: {
   initialClients: Client[];
   projects: Project[];
+  plans: ProjectPlan[];
   invoices: Invoice[];
 }) {
   const sb = supabaseBrowser();
@@ -87,10 +91,18 @@ export function ClientsView({
       );
   }, [clients, filter, query]);
 
-  const totalLtv = clients.reduce((s, c) => s + c.lifetime_value, 0);
-  const mrr = clients
-    .filter((c) => c.status === "active")
-    .reduce((s, c) => s + (c.retainer_amount ?? 0), 0);
+  const planById = useMemo(
+    () => new Map(plans.map((pl) => [pl.id, pl])),
+    [plans],
+  );
+
+  /** A client's plan reads as "Starter · 40,000 DA / year". */
+  const planLabel = (id: string | null) => {
+    const plan = id ? planById.get(id) : null;
+    if (!plan) return null;
+    const period = plan.kind === "subscription" ? " / year" : "";
+    return `${plan.name} · ${money(plan.price)}${period}`;
+  };
 
   const openClient = (c: Client) => {
     setSelected(c);
@@ -111,8 +123,7 @@ export function ClientsView({
       status: draft.status,
       health: draft.health,
       tier: draft.tier,
-      lifetime_value: Number(draft.lifetime_value ?? 0),
-      retainer_amount: draft.retainer_amount ? Number(draft.retainer_amount) : null,
+      plan_id: draft.plan_id || null,
       notes: draft.notes || null,
     };
     const { error } = await sb.from("clients").update(patch).eq("id", selected.id);
@@ -146,12 +157,23 @@ export function ClientsView({
     ? invoices.filter((i) => i.client_id === selected.id)
     : [];
 
+  // Only the plans of projects this client actually has.
+  const clientPlans = clientProjects.flatMap((project) =>
+    plans
+      .filter((pl) => pl.project_id === project.id)
+      .map((pl) => ({
+        value: pl.id,
+        label: pl.name,
+        hint: `${project.name} · ${money(pl.price)}${pl.kind === "subscription" ? " / year" : ""}`,
+      })),
+  );
+
   return (
     <>
       <PageHeader
         eyebrow="Revenue"
         title="Clients"
-        description={`${counts.active} active · ${money(totalLtv)} lifetime value · ${money(mrr)} recurring per month.`}
+        description={`${counts.active} active of ${counts.all}. What each one bought, and where it stands.`}
         actions={
           <>
             <Segmented
@@ -238,24 +260,16 @@ export function ClientsView({
                   </Badge>
                 </div>
 
-                <dl className="mt-4 grid grid-cols-3 gap-2 border-t border-line pt-3">
-                  <div>
+                <dl className="mt-4 grid grid-cols-[1fr_auto] gap-2 border-t border-line pt-3">
+                  <div className="min-w-0">
                     <dt className="text-[10.5px] uppercase tracking-wider text-ink-4">
-                      Lifetime
+                      Plan
                     </dt>
-                    <dd className="mt-0.5 font-display text-[15px] tabular-nums text-ink">
-                      {compactMoney(c.lifetime_value)}
+                    <dd className="mt-0.5 truncate text-[13px] text-ink">
+                      {planLabel(c.plan_id) ?? "—"}
                     </dd>
                   </div>
-                  <div>
-                    <dt className="text-[10.5px] uppercase tracking-wider text-ink-4">
-                      Retainer
-                    </dt>
-                    <dd className="mt-0.5 font-display text-[15px] tabular-nums text-ink">
-                      {c.retainer_amount ? compactMoney(c.retainer_amount) : "—"}
-                    </dd>
-                  </div>
-                  <div>
+                  <div className="text-right">
                     <dt className="text-[10.5px] uppercase tracking-wider text-ink-4">
                       Projects
                     </dt>
@@ -289,8 +303,7 @@ export function ClientsView({
                   <th className="px-4 py-2.5 font-semibold">Client</th>
                   <th className="px-4 py-2.5 font-semibold">Status</th>
                   <th className="px-4 py-2.5 font-semibold">Health</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Lifetime</th>
-                  <th className="px-4 py-2.5 text-right font-semibold">Retainer</th>
+                  <th className="px-4 py-2.5 font-semibold">Plan</th>
                   <th className="px-4 py-2.5 font-semibold">Since</th>
                 </tr>
               </thead>
@@ -322,11 +335,8 @@ export function ClientsView({
                     <td className="px-4 py-2.5">
                       <Badge accent={HEALTH_ACCENT[c.health]}>{HEALTH_LABEL[c.health]}</Badge>
                     </td>
-                    <td className="px-4 py-2.5 text-right text-[13px] tabular-nums text-ink">
-                      {money(c.lifetime_value)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right text-[13px] tabular-nums text-ink-2">
-                      {c.retainer_amount ? money(c.retainer_amount) : "—"}
+                    <td className="px-4 py-2.5 text-[13px] text-ink-2">
+                      {planLabel(c.plan_id) ?? "—"}
                     </td>
                     <td className="px-4 py-2.5 text-[12.5px] text-ink-3">
                       {new Date(c.since).toLocaleDateString(LOCALE, {
@@ -463,22 +473,24 @@ export function ClientsView({
               </Field>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Lifetime value" hint="DA">
-                <Input
-                  type="number"
-                  value={draft.lifetime_value ?? 0}
-                  onChange={(e) => set("lifetime_value", Number(e.target.value))}
-                />
-              </Field>
-              <Field label="Monthly retainer" hint="DA">
-                <Input
-                  type="number"
-                  value={draft.retainer_amount ?? ""}
-                  onChange={(e) => set("retainer_amount", Number(e.target.value))}
-                />
-              </Field>
-            </div>
+            <Field
+              label="Payment plan"
+              hint={
+                clientPlans.length === 0
+                  ? "their projects have no plans yet"
+                  : "from their projects"
+              }
+            >
+              <Combobox
+                value={draft.plan_id ?? null}
+                onChange={(v) => set("plan_id", v)}
+                options={clientPlans}
+                placeholder="No plan"
+                clearLabel="No plan"
+                emptyLabel="No plan matches that"
+                disabled={clientPlans.length === 0}
+              />
+            </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Address">

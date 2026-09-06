@@ -359,7 +359,8 @@ export function CreateDialog({
                     email: form.email || null,
                     phone: form.phone || null,
                     status: "active",
-                    retainer_amount: form.retainer ? Number(form.retainer) : null,
+                    plan_id: form.plan || null,
+                    notes: form.notes || null,
                   }
                 : {};
 
@@ -373,6 +374,16 @@ export function CreateDialog({
     if (error) {
       toast.error(error.message);
       return;
+    }
+
+    // A project belongs to its client, so picking one here moves it across
+    // rather than storing the link twice.
+    if (kind === "client" && form.project) {
+      const { error: linkError } = await sb
+        .from("projects")
+        .update({ client_id: (data as Row).id })
+        .eq("id", form.project);
+      if (linkError) toast.error(`Client saved, but the project did not link: ${linkError.message}`);
     }
 
     toast.success(`${meta.label} created`);
@@ -717,14 +728,47 @@ export function CreateDialog({
         )}
 
         {kind === "client" && (
-          <Field label="Monthly retainer" hint="DA">
-            <Input
-              type="number"
-              value={form.retainer ?? ""}
-              onChange={(e) => set("retainer", e.target.value)}
-              placeholder="300000"
-            />
-          </Field>
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Project" hint="what they bought">
+                <Combobox
+                  value={form.project ?? null}
+                  onChange={(v) => {
+                    set("project", v ?? "");
+                    set("plan", "");
+                  }}
+                  options={projects}
+                  placeholder="No project yet"
+                  clearLabel="No project yet"
+                  emptyLabel="No project matches that"
+                />
+              </Field>
+              <Field label="Payment plan">
+                <Combobox
+                  value={form.plan ?? null}
+                  onChange={(v) => set("plan", v ?? "")}
+                  options={plans
+                    .filter((pl) => pl.project_id === form.project)
+                    .map((pl) => ({
+                      value: pl.id,
+                      label: pl.name,
+                      hint: `${money(pl.price)}${pl.kind === "subscription" ? " / year" : ""}`,
+                    }))}
+                  placeholder={form.project ? "No plan yet" : "Pick a project first"}
+                  clearLabel="No plan yet"
+                  emptyLabel="This project has no plans yet"
+                />
+              </Field>
+            </div>
+
+            <Field label="Notes" hint="optional">
+              <Textarea
+                rows={3}
+                value={form.notes ?? ""}
+                onChange={(e) => set("notes", e.target.value)}
+              />
+            </Field>
+          </>
         )}
 
         {kind === "affiliate" && (

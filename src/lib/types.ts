@@ -147,6 +147,8 @@ export type Client = {
   owner_id: ID | null;
   lifetime_value: number;
   retainer_amount: number | null;
+  /** The plan they signed up on, one of their project's payment plans. */
+  plan_id: ID | null;
   accent: Accent;
   tags: string[];
   notes: string | null;
